@@ -1,0 +1,304 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ───────────────────────── Usuarios ─────────────────────────
+
+enum UserRole {
+  ADMIN
+  OPERATOR
+  SELLER
+  DRIVER
+  PASSENGER
+}
+
+model User {
+  id           Int      @id @default(autoincrement())
+  email        String   @unique
+  passwordHash String
+  name         String
+  role         UserRole
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  crewMember     CrewMember?
+  passenger      Passenger?
+  soldTickets    Ticket[]
+  statusChanges  BusStatusHistory[]
+}
+
+// ───────────────────────── Flota ─────────────────────────
+
+enum BusStatus {
+  AVAILABLE
+  ON_ROUTE
+  MAINTENANCE
+  OUT_OF_SERVICE
+}
+
+model Bus {
+  id         Int       @id @default(autoincrement())
+  plate      String    @unique
+  model      String
+  year       Int
+  odometerKm Int       @default(0)
+  status     BusStatus @default(AVAILABLE)
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  seats         Seat[]
+  trips         Trip[]
+  maintenances  Maintenance[]
+  statusHistory BusStatusHistory[]
+}
+
+/// Mapa físico de asientos del bus. La disponibilidad se calcula por viaje (Ticket).
+model Seat {
+  id     Int @id @default(autoincrement())
+  busId  Int
+  number Int
+
+  bus     Bus      @relation(fields: [busId], references: [id], onDelete: Cascade)
+  tickets Ticket[]
+
+  @@unique([busId, number])
+}
+
+model BusStatusHistory {
+  id          Int       @id @default(autoincrement())
+  busId       Int
+  fromStatus  BusStatus
+  toStatus    BusStatus
+  changedById Int
+  reason      String?
+  createdAt   DateTime  @default(now())
+
+  bus       Bus  @relation(fields: [busId], references: [id], onDelete: Restrict)
+  changedBy User @relation(fields: [changedById], references: [id], onDelete: Restrict)
+
+  @@index([busId, createdAt])
+}
+
+enum MaintenanceType {
+  PREVENTIVE
+  CORRECTIVE
+}
+
+model Maintenance {
+  id          Int             @id @default(autoincrement())
+  busId       Int
+  type        MaintenanceType
+  description String
+  cost        Decimal         @db.Decimal(10, 2)
+  startedAt   DateTime
+  finishedAt  DateTime?
+  createdAt   DateTime        @default(now())
+
+  bus Bus @relation(fields: [busId], references: [id], onDelete: Restrict)
+
+  @@index([busId, startedAt])
+}
+
+// ───────────────────────── Red y horarios ─────────────────────────
+
+model Terminal {
+  id      Int    @id @default(autoincrement())
+  name    String
+  city    String
+  address String?
+
+  departures Route[] @relation("RouteOrigin")
+  arrivals   Route[] @relation("RouteDestination")
+
+  @@unique([city, name])
+}
+
+model Route {
+  id              Int   @id @default(autoincrement())
+  originId        Int
+  destinationId   Int
+  distanceKm      Float
+  durationMinutes Int
+
+  origin      Terminal    @relation("RouteOrigin", fields: [originId], references: [id], onDelete: Restrict)
+  destination Terminal    @relation("RouteDestination", fields: [destinationId], references: [id], onDelete: Restrict)
+  frequencies Frequency[]
+  trips       Trip[]
+
+  @@unique([originId, destinationId])
+}
+
+enum Weekday {
+  MONDAY
+  TUESDAY
+  WEDNESDAY
+  THURSDAY
+  FRIDAY
+  SATURDAY
+  SUNDAY
+}
+
+model Frequency {
+  id            Int       @id @default(autoincrement())
+  routeId       Int
+  departureTime DateTime  @db.Time(0)
+  weekdays      Weekday[]
+  basePrice     Decimal   @db.Decimal(10, 2)
+  isActive      Boolean   @default(true)
+
+  route Route  @relation(fields: [routeId], references: [id], onDelete: Restrict)
+  trips Trip[]
+
+  @@index([routeId])
+}
+
+// ───────────────────────── Viajes ─────────────────────────
+
+enum TripStatus {
+  SCHEDULED
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+model Trip {
+  id                 Int        @id @default(autoincrement())
+  routeId            Int
+  frequencyId        Int?
+  busId              Int
+  scheduledDeparture DateTime
+  actualDeparture    DateTime?
+  actualArrival      DateTime?
+  price              Decimal    @db.Decimal(10, 2)
+  status             TripStatus @default(SCHEDULED)
+  createdAt          DateTime   @default(now())
+  updatedAt          DateTime   @updatedAt
+
+  route     Route      @relation(fields: [routeId], references: [id], onDelete: Restrict)
+  frequency Frequency? @relation(fields: [frequencyId], references: [id], onDelete: SetNull)
+  bus       Bus        @relation(fields: [busId], references: [id], onDelete: Restrict)
+  crew      TripCrew[]
+  tickets   Ticket[]
+
+  @@unique([frequencyId, scheduledDeparture])
+  @@index([busId, scheduledDeparture])
+  @@index([status, scheduledDeparture])
+  @@index([routeId, scheduledDeparture])
+}
+
+// ───────────────────────── Tripulación ─────────────────────────
+
+enum CrewPosition {
+  DRIVER
+  ASSISTANT
+}
+
+enum CrewStatus {
+  ACTIVE
+  INACTIVE
+  SUSPENDED
+}
+
+model CrewMember {
+  id                Int          @id @default(autoincrement())
+  userId            Int?         @unique
+  document          String       @unique
+  name              String
+  position          CrewPosition
+  licenseNumber     String?
+  licenseExpiresAt  DateTime?
+  status            CrewStatus   @default(ACTIVE)
+  createdAt         DateTime     @default(now())
+  updatedAt         DateTime     @updatedAt
+
+  user  User?      @relation(fields: [userId], references: [id], onDelete: SetNull)
+  trips TripCrew[]
+}
+
+model TripCrew {
+  tripId       Int
+  crewMemberId Int
+
+  trip       Trip       @relation(fields: [tripId], references: [id], onDelete: Cascade)
+  crewMember CrewMember @relation(fields: [crewMemberId], references: [id], onDelete: Restrict)
+
+  @@id([tripId, crewMemberId])
+  @@index([crewMemberId])
+}
+
+// ───────────────────────── Ventas ─────────────────────────
+
+model Passenger {
+  id       Int     @id @default(autoincrement())
+  userId   Int?    @unique
+  document String  @unique
+  name     String
+  email    String?
+  phone    String?
+  createdAt DateTime @default(now())
+
+  user    User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  tickets Ticket[]
+}
+
+enum TicketStatus {
+  RESERVED
+  PAID
+  BOARDED
+  CANCELLED
+}
+
+model Ticket {
+  id          Int          @id @default(autoincrement())
+  code        String       @unique @default(uuid())
+  tripId      Int
+  seatId      Int
+  passengerId Int
+  soldById    Int?
+  price       Decimal      @db.Decimal(10, 2)
+  status      TicketStatus @default(RESERVED)
+  expiresAt   DateTime?
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  trip      Trip      @relation(fields: [tripId], references: [id], onDelete: Restrict)
+  seat      Seat      @relation(fields: [seatId], references: [id], onDelete: Restrict)
+  passenger Passenger @relation(fields: [passengerId], references: [id], onDelete: Restrict)
+  soldBy    User?     @relation(fields: [soldById], references: [id], onDelete: SetNull)
+  payments  Payment[]
+
+  @@index([tripId, status])
+  @@index([passengerId])
+}
+
+enum PaymentMethod {
+  CASH
+  CARD
+  TRANSFER
+}
+
+enum PaymentStatus {
+  PENDING
+  COMPLETED
+  REFUNDED
+}
+
+model Payment {
+  id        Int           @id @default(autoincrement())
+  ticketId  Int
+  amount    Decimal       @db.Decimal(10, 2)
+  method    PaymentMethod
+  status    PaymentStatus @default(PENDING)
+  reference String?
+  createdAt DateTime      @default(now())
+
+  ticket Ticket @relation(fields: [ticketId], references: [id], onDelete: Restrict)
+
+  @@index([ticketId])
+}
