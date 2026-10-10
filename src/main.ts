@@ -1,8 +1,26 @@
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module.js';
+import { ValidationPipe } from '@nestjs/common';
+import { envs } from './config/index.js';
+import { HttpExceptionFilter } from './common/exceptions/http-exception.filter.js';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
-  await app.listen(process.env.PORT ?? 3000);
+  
+  app.enableCors({
+    methods: ['GET', 'PUT', 'PATCH', 'POST', 'DELETE'],
+    origin: 'http://localhost:4200',
+  });
+  app.useGlobalPipes(
+    new ValidationPipe({
+      transform: true,
+      whitelist: true,
+      forbidNonWhitelisted: true,
+    }),
+  );
+
+  app.useGlobalFilters(new HttpExceptionFilter());
+
+  await app.listen(envs.port, () => `Server running on port ${envs.port}`);
 }
 await bootstrap();

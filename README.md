@@ -15,6 +15,7 @@ A backend API for managing bus trips, ticket sales, and seat allocation.
 ## Third-party Dependencies
 - Prisma (ORM)
 - Supabase (PostgreSQL database)
+- class-validator class-transformer
 
 ## Prerequisites
 - Node.js v24.18 or higher
