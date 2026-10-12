@@ -7,6 +7,7 @@ import { CredentialsDto } from './dto/credential.dto.js';
 import { JwtService } from '@nestjs/jwt';
 import { envs } from '../../config/envs.js';
 import { createHash, randomUUID } from 'crypto';
+import { UserRole } from '../../generated/prisma/enums.js';
 
 const sha256 = (text: string) =>
   createHash('sha256').update(text).digest('hex');
@@ -42,9 +43,8 @@ export class AuthService {
     const { passwordHash, ...data } = user;
     const comparePasswd = bcrypt.compareSync(password, passwordHash);
     if (!comparePasswd) throw new UnauthorizedException('Credenciales invalidas');
-    const tokens = await this.generateTokens(user.id);
+    const tokens = await this.generateTokens(data);
     // generar un token jwt
-    const payload = data;
     return {
       access_token: tokens.accessToken,
       refresh_token: tokens.refreshToken,
@@ -52,15 +52,18 @@ export class AuthService {
     }
   }
 
-  private async generateTokens(userId: number) {
-    const accessToken = await this.jwtService.signAsync({ sub: userId });
+  private async generateTokens(user: { id: number; role: UserRole }) {
+    const accessToken = await this.jwtService.signAsync({ 
+      sub: user.id, 
+      role: user.role 
+    });
 
     const refreshToken = await this.jwtService.signAsync(
-      { sub: userId, jti: randomUUID() },
+      { sub: user.id, jti: randomUUID(), role: user.role },
       { secret: envs.jwt_refresh_token, expiresIn: '7d' },
     );
 
-    await this.user.updateRefreshToken(userId, sha256(refreshToken));
+    await this.user.updateRefreshToken(user.id, sha256(refreshToken));
 
     return { accessToken, refreshToken };
   }
@@ -79,7 +82,7 @@ export class AuthService {
     if (!user?.refreshTokenHash || user.refreshTokenHash !== sha256(refreshToken)) {
       throw new UnauthorizedException('Refresh token inválida');
     }
-    return this.generateTokens(user.id);
+    return this.generateTokens({ id: user.id, role: user.role});
   }
 
 
