@@ -28,8 +28,13 @@ export class UserService {
     }
   }
 
-  findAll() {
-    return `This action returns all user`;
+  async updateRefreshToken(id: number, refreshTokenHash: string | null) {
+    return this.prisma.user.update({
+      where: { id },
+      data: {
+        refreshTokenHash
+      }
+    })
   }
 
   async findOne(id: number) {
@@ -44,7 +49,4 @@ export class UserService {
     });
   }
 
-  remove(id: number) {
-    return `This action removes a #${id} user`;
-  }
 }

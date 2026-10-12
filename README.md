@@ -3,6 +3,7 @@
 A backend API for managing bus trips, ticket sales, and seat allocation.
 
 ## Features
+- Authentication and Authorization
 - Trip management
 - Ticket sales
 - Seat allocation
@@ -16,6 +17,9 @@ A backend API for managing bus trips, ticket sales, and seat allocation.
 - Prisma (ORM)
 - Supabase (PostgreSQL database)
 - class-validator class-transformer
+- @nestjs/jwt (token)
+- bcrypt (Encript)
+- joi (validation env)
 
 ## Prerequisites
 - Node.js v24.18 or higher
@@ -40,6 +44,8 @@ A backend API for managing bus trips, ticket sales, and seat allocation.
 |---|---|
 | `DATABASE_URL` | PostgreSQL connection string |
 | `PORT` | Port where the server runs |
+| `JWT_SECRET` | Jwt secret string |
+| `JWT_REFRESH_SECRET` | Jwt refresh secret string |
 
 ### Supabase
 1. Create a new project.

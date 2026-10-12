@@ -18,19 +18,20 @@ enum UserRole {
 }
 
 model User {
-  id           Int      @id @default(autoincrement())
-  email        String   @unique
-  passwordHash String
-  name         String
-  role         UserRole
-  isActive     Boolean  @default(true)
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  id               Int      @id @default(autoincrement())
+  email            String   @unique
+  passwordHash     String
+  name             String
+  role             UserRole
+  isActive         Boolean  @default(true)
+  refreshTokenHash String?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
 
-  crewMember     CrewMember?
-  passenger      Passenger?
-  soldTickets    Ticket[]
-  statusChanges  BusStatusHistory[]
+  crewMember    CrewMember?
+  passenger     Passenger?
+  soldTickets   Ticket[]
+  statusChanges BusStatusHistory[]
 }
 
 // ───────────────────────── Flota ─────────────────────────
@@ -108,7 +109,7 @@ model Maintenance {
 // ───────────────────────── Red y horarios ─────────────────────────
 
 model Terminal {
-  id      Int    @id @default(autoincrement())
+  id      Int     @id @default(autoincrement())
   name    String
   city    String
   address String?
@@ -206,16 +207,16 @@ enum CrewStatus {
 }
 
 model CrewMember {
-  id                Int          @id @default(autoincrement())
-  userId            Int?         @unique
-  document          String       @unique
-  name              String
-  position          CrewPosition
-  licenseNumber     String?
-  licenseExpiresAt  DateTime?
-  status            CrewStatus   @default(ACTIVE)
-  createdAt         DateTime     @default(now())
-  updatedAt         DateTime     @updatedAt
+  id               Int          @id @default(autoincrement())
+  userId           Int?         @unique
+  document         String       @unique
+  name             String
+  position         CrewPosition
+  licenseNumber    String?
+  licenseExpiresAt DateTime?
+  status           CrewStatus   @default(ACTIVE)
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @updatedAt
 
   user  User?      @relation(fields: [userId], references: [id], onDelete: SetNull)
   trips TripCrew[]
@@ -235,12 +236,12 @@ model TripCrew {
 // ───────────────────────── Ventas ─────────────────────────
 
 model Passenger {
-  id       Int     @id @default(autoincrement())
-  userId   Int?    @unique
-  document String  @unique
-  name     String
-  email    String?
-  phone    String?
+  id        Int      @id @default(autoincrement())
+  userId    Int?     @unique
+  document  String   @unique
+  name      String
+  email     String?
+  phone     String?
   createdAt DateTime @default(now())
 
   user    User?    @relation(fields: [userId], references: [id], onDelete: SetNull)

@@ -1,6 +1,6 @@
 import { IsEmail, IsEnum, IsNotEmpty, IsString, MinLength } from "class-validator";
-import { EUserRole } from "../common/index.js";
 import { Transform } from "class-transformer";
+import { EUserRole } from "../common/enums.common.js";
 
 export class CreateAuthDto {
     @IsEmail()
