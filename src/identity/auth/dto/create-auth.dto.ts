@@ -14,8 +14,4 @@ export class CreateAuthDto {
     @IsString()
     @IsNotEmpty()
     name: string;
-
-    @Transform(( {value}) => value.toUpperCase())
-    @IsEnum(EUserRole, {message: 'Invalid role, must be one role permitted'})
-    role: EUserRole;
 }

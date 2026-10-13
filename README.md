@@ -42,10 +42,19 @@ A backend API for managing bus trips, ticket sales, and seat allocation.
 ### Environment Variables
 | Variable | Description |
 |---|---|
-| `DATABASE_URL` | PostgreSQL connection string |
 | `PORT` | Port where the server runs |
+| `DATABASE_URL` | PostgreSQL connection string |
 | `JWT_SECRET` | Jwt secret string |
 | `JWT_REFRESH_SECRET` | Jwt refresh secret string |
+| `JWT_PWD_SETUP_SECRET` | Jwt password setup secret string |
+| `JWT_PWD_SETUP_PURPOSE` | Jwt password setup prupose string |
+| `JWT_PWD_SETUP_ISSUER` | Jwt password setup issuer string |
+| `JWT_PWD_SETUP_AUDIENCE` | Jwt password setup audience string |
+| `JWT_PWD_RESET_SECRET` | Jwt password reset secret string |
+| `JWT_PWD_RESET_PURPOSE` | Jwt password reset prupose string |
+| `JWT_PWD_RESET_ISSUER` | Jwt password reset issuer string |
+| `JWT_PWD_RESET_AUDIENCE` | Jwt password reset audience string |
+| `FRONTEND_URL` | Frontend url string |
 
 ### Supabase
 1. Create a new project.
