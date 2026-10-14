@@ -11,10 +11,11 @@ import { FindUsersQueryDto } from './dto/find-users-query.dto.js';
 export class UserController {
   constructor(private readonly userService: UserService) { }
 
-  @UseGuards(AuthGuard)
+  @UseGuards(AuthGuard, RoleGuard)
+  @Roles(UserRole.ADMIN)
   @Patch(':id')
-  update(@Param('id') id: string, @Body() updateUser: UpdateUserDto) {
-    return this.userService.update(+id, updateUser);
+  update(@Param('id', ParseIntPipe) id: number, @Body() updateUser: UpdateUserDto) {
+    return this.userService.update(id, updateUser);
   }
 
   @UseGuards(AuthGuard, RoleGuard)

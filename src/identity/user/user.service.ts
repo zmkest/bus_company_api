@@ -72,7 +72,7 @@ export class UserService {
     const userUpdate = await this.prisma.user.update({
       where: { id },
       data: updateUser,
-      omit: { passwordHash: true }
+      select: userSelect,
     });
 
     return userUpdate;

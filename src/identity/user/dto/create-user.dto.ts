@@ -1,11 +1,13 @@
 import { IsEmail, IsEnum, IsString, MinLength, minLength } from "class-validator";
 import { UserRole } from "../../../generated/prisma/enums.js";
-import { Transform } from "class-transformer";
 
 export class CreateUserDto {
-    @IsEmail()
+    @IsEmail({}, {message: 'El email no es válido'})
     email: string;
 
     @IsString()
     name: string;
+
+    @IsEnum(UserRole, { message: 'Este rol no es válido'})
+    role: UserRole;
 }
