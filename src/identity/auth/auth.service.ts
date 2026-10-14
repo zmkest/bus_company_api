@@ -29,7 +29,7 @@ export class AuthService {
   ) { }
 
   async signUp(createAuthDto: CreateAuthDto) {
-    const { passwordHash: password, ...data } = createAuthDto;
+    const { password, ...data } = createAuthDto;
 
     const hash = await bcrypt.hash(password, 10);
 
@@ -46,7 +46,7 @@ export class AuthService {
 
     const user = await this.user.findByEmail(email);
     if (!user) throw new UnauthorizedException('Credenciales invalidas');
-    if (user.isActive) throw new UnauthorizedException('La cuenta no está activada');
+    if (!user.isActive) throw new UnauthorizedException('La cuenta no está activada');
 
     const { passwordHash, ...data } = user;
     const comparePasswd = bcrypt.compareSync(password, passwordHash);
@@ -55,7 +55,7 @@ export class AuthService {
     return {
       access_token: tokens.accessToken,
       refresh_token: tokens.refreshToken,
-      user,
+      user: data,
     }
   }
 
@@ -89,11 +89,23 @@ export class AuthService {
     if (!user?.refreshTokenHash || user.refreshTokenHash !== sha256(refreshToken)) {
       throw new UnauthorizedException('Refresh token inválida');
     }
-    return this.generateTokens({ id: user.id, role: user.role });
+    const { accessToken, refreshToken: refresh_token } = await this.generateTokens({ id: user.id, role: user.role });
+    return {
+      access_token: accessToken,
+      refresh_token
+    }
   }
 
-  async logout(userId: number) {
-    await this.user.updateRefreshToken(userId, null);
+  async logout(token: string) {
+    try {
+      const payload = await this.jwtService.verifyAsync<{ sub: number }>(token,
+        { secret: envs.jwt_refresh_token, ignoreExpiration: true }
+      );
+      console.log(payload)
+      await this.user.updateRefreshToken(payload.sub, null);
+    } catch {
+      console.error('error al obtener el user id del token refresh');
+    }
   }
 
   async createUserByAdmin(createUser: CreateUserByAdminDto) {

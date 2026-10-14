@@ -1,17 +1,15 @@
-import { IsEmail, IsEnum, IsNotEmpty, IsString, MinLength } from "class-validator";
-import { Transform } from "class-transformer";
-import { EUserRole } from "../common/enums.common.js";
+import { IsEmail, IsNotEmpty, IsString, MinLength } from "class-validator";
 
 export class CreateAuthDto {
-    @IsEmail()
+    @IsEmail({}, { message: 'El correo no es válido'})
     email: string;
 
-    @IsString()
-    @IsNotEmpty()
-    @MinLength(6)
-    passwordHash: string;
+    @IsString({ message: 'La contraseña debería ser un string'})
+    @IsNotEmpty({ message: 'La contraseña no debe estar vacia'})
+    @MinLength(6, { message: 'La contraseña debe tener mas de 6 caracteres'})
+    password: string;
 
-    @IsString()
-    @IsNotEmpty()
+    @IsString({ message: 'El nombre debería ser un string'})
+    @IsNotEmpty({ message: 'El nombre no debe estar vacio'})
     name: string;
 }

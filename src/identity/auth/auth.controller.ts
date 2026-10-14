@@ -1,4 +1,4 @@
-import { Controller, Post, Body, UseGuards } from '@nestjs/common';
+import { Controller, Post, Body, UseGuards, Res, Req, HttpCode, HttpStatus, UnauthorizedException } from '@nestjs/common';
 import { AuthService } from './auth.service.js';
 import { CreateAuthDto } from './dto/create-auth.dto.js';
 import { CredentialsDto } from './dto/credential.dto.js';
@@ -10,36 +10,85 @@ import { RoleGuard } from '../../common/guards/role.guard.js';
 import { CreateUserByAdminDto } from './dto/create-user.dto.js';
 import { ForgotPasswordDto } from './dto/forgot-password.dto.js';
 import { ResetPasswordDto } from './dto/reset-password.dto.js';
+import type { CookieOptions, Request, Response } from 'express';
+import { Throttle } from '@nestjs/throttler';
+
+const REFRESH_COOKIE = 'refresh_token';
+const REFRESH_MAX_AGE = 7 * 24 * 60 * 60 * 1000;
 
 @Controller('auth')
 export class AuthController {
   constructor(private readonly authService: AuthService) { }
+
+  private get cookieOptions(): CookieOptions {
+    return {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'strict',
+      path: '/auth',
+    };
+  }
+
+  private setRefreshCookie(res: Response, token: string) {
+    res.cookie(REFRESH_COOKIE, token, { ...this.cookieOptions, maxAge: REFRESH_MAX_AGE });
+  }
+
+  private clearRefreshCookie(res: Response) {
+    res.clearCookie(REFRESH_COOKIE, this.cookieOptions);
+  }
 
   @Post('register')
   signUp(@Body() createAuthDto: CreateAuthDto) {
     return this.authService.signUp(createAuthDto);
   }
 
+  @Throttle({ default: { limit: 5, ttl: 60_000 } })
+  @HttpCode(HttpStatus.OK)
   @Post('login')
-  signIn(@Body() credentials: CredentialsDto) {
-    return this.authService.signIn(credentials);
+  async signIn(
+    @Body() credentials: CredentialsDto, 
+    @Res({ passthrough: true }) res: Response
+  ) {
+    const { user, access_token, refresh_token } = await this.authService.signIn(credentials);
+    this.setRefreshCookie(res, refresh_token);
+    return { user, access_token };
   }
 
+  @Throttle({ default: { limit: 20, ttl: 60_000 } })
+  @HttpCode(HttpStatus.OK)
   @Post('refresh')
-  refresh(@Body('refreshToken') refreshToken: string) {
-    return this.authService.refreshToken(refreshToken);
+  async refresh(
+    @Req() req: Request, 
+    @Res({ passthrough: true }) res: Response
+  ) {
+    const token = req.cookies?.[REFRESH_COOKIE];
+    if (!token) throw new UnauthorizedException('Sesión no encontrada');
+
+    try {
+      const { access_token, refresh_token } = await this.authService.refreshToken(token);
+      this.setRefreshCookie(res, refresh_token);
+      return { access_token };
+    } catch (e) {
+      this.clearRefreshCookie(res);
+      throw e;
+    }
   }
 
+  @HttpCode(HttpStatus.NO_CONTENT)
   @Post('logout')
-  @UseGuards(AuthGuard)
-  logout(@CurrentUserId() userId: number) {
-    return this.authService.logout(userId);
+  async logout(
+    @Req() req: Request, 
+    @Res({ passthrough: true }) res: Response
+  ) {
+    const token = req.cookies?.[REFRESH_COOKIE];
+    if (token) await this.authService.logout(token);
+    this.clearRefreshCookie(res);
   }
 
   @UseGuards(AuthGuard, RoleGuard)
   @Roles(UserRole.ADMIN)
-  @Post()
-  createByAdmin(createUserDto: CreateUserByAdminDto) {
+  @Post('users')
+  createByAdmin(@Body() createUserDto: CreateUserByAdminDto) {
     return this.authService.createUserByAdmin(createUserDto);
   }
 
@@ -51,6 +100,8 @@ export class AuthController {
     return this.authService.changePasswordLink(token, newPassword);
   }
 
+  @Throttle({ default: { limit: 3, ttl: 60_000 } })
+  @HttpCode(HttpStatus.OK)
   @Post('forgot-password')
   forgotPassword(
     @Body() forgotPasswordDto: ForgotPasswordDto,
@@ -58,6 +109,8 @@ export class AuthController {
     return this.authService.forgotPassword(forgotPasswordDto);
   }
 
+  @Throttle({ default: { limit: 5, ttl: 60_000 } })
+  @HttpCode(HttpStatus.OK)
   @Post('reset-password')
   resetPassword(@Body() resetPasswordDto: ResetPasswordDto) {
     return this.authService.resetPassword(resetPasswordDto);
