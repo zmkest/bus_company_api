@@ -32,6 +32,8 @@ model User {
   passenger     Passenger?
   soldTickets   Ticket[]
   statusChanges BusStatusHistory[]
+
+  @@index([createdAt])
 }
 
 // ───────────────────────── Flota ─────────────────────────

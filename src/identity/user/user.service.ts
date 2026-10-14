@@ -3,6 +3,17 @@ import { PrismaService } from '../../prisma/prisma.service.js';
 import { TCreateUser, TCreateUserByAdmin } from './types/create-user.type.js';
 import { Prisma, UserRole } from '../../generated/prisma/client.js';
 import { UpdateUserDto } from './dto/update-user.dto.js';
+import { FindUsersQueryDto } from './dto/find-users-query.dto.js';
+import { paginate } from '../../common/interfaces/paginated.js';
+
+   const userSelect = {
+      id: true,
+      name: true,
+      email: true,
+      role: true,
+      isActive: true,
+      createdAt: true,
+    } satisfies Prisma.UserSelect;
 
 @Injectable()
 export class UserService {
@@ -117,5 +128,40 @@ export class UserService {
       where: {id}
     });
     return 'Usuario eliminado';
+  }
+
+  async count() {
+    return await this.prisma.user.count();
+  }
+
+  async countIsActive(isActive: boolean) {
+    return await this.prisma.user.count({
+      where: {isActive}
+    });
+  }
+
+  async findAll(query: FindUsersQueryDto) {
+    const { limit, order, page, sortBy, search } = query;
+
+    const where: Prisma.UserWhereInput = {
+      ...(search && {
+        OR: [
+          { name: { contains: search, mode: 'insensitive' }},
+          { email: { contains: search, mode: 'insensitive' }}
+        ]
+      })
+    }
+    const [items, total] = await this.prisma.$transaction([
+      this.prisma.user.findMany({
+        where,
+        select: userSelect,
+        orderBy: [{[sortBy]: order},{ id: 'desc'}],
+        skip: (page - 1) * limit,
+        take: limit
+      }),
+      this.prisma.user.count({ where }),
+    ]);
+
+    return paginate(items, total, page, limit);
   }
 }

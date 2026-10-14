@@ -101,7 +101,6 @@ export class AuthService {
       const payload = await this.jwtService.verifyAsync<{ sub: number }>(token,
         { secret: envs.jwt_refresh_token, ignoreExpiration: true }
       );
-      console.log(payload)
       await this.user.updateRefreshToken(payload.sub, null);
     } catch {
       console.error('error al obtener el user id del token refresh');
