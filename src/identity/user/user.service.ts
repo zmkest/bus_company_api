@@ -87,7 +87,7 @@ export class UserService {
     const userUpdate = await this.prisma.user.update({
       where: { id },
       data: { isActive },
-      omit: { passwordHash: true }
+      select: userSelect
     });
 
     return userUpdate;
@@ -124,10 +124,10 @@ export class UserService {
   }
 
   async delete(id: number) {
-    await this.prisma.user.delete({
-      where: {id}
+    return await this.prisma.user.delete({
+      where: {id},
+      select: userSelect
     });
-    return 'Usuario eliminado';
   }
 
   async count() {

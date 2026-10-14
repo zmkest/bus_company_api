@@ -132,7 +132,6 @@ export class AuthService {
     );
     url.searchParams.set('token', token);
 
-    console.log(url);
     return user;
   }
 
