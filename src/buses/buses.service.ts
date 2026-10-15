@@ -3,7 +3,7 @@ import { CreateBusDto } from './dto/create-bus.dto.js';
 import { UpdateBusDto } from './dto/update-bus.dto.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { FindBusesQueryDto } from './dto/find-buses-query.dto.js';
-import { Prisma } from '../generated/prisma/client.js';
+import { BusStatus, Prisma } from '../generated/prisma/client.js';
 import { paginate } from '../common/interfaces/paginated.js';
 
 @Injectable()
@@ -73,6 +73,16 @@ export class BusesService {
   remove(id: number) {
     return this.prisma.bus.delete({
       where: { id }
+    })
+  }
+
+  count() {
+    return this.prisma.bus.count();
+  }
+
+  countStatus(status: BusStatus) {
+    return this.prisma.bus.count({
+      where: { status }
     })
   }
 }

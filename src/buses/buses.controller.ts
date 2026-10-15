@@ -1,11 +1,11 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards, Query, ParseIntPipe } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards, Query, ParseIntPipe, ParseEnumPipe } from '@nestjs/common';
 import { BusesService } from './buses.service.js';
 import { CreateBusDto } from './dto/create-bus.dto.js';
 import { UpdateBusDto } from './dto/update-bus.dto.js';
 import { AuthGuard } from '../identity/auth/common/guards/auth.guard.js';
 import { RoleGuard } from '../common/guards/role.guard.js';
 import { Roles } from '../common/decorators/roles-user.decorator.js';
-import { UserRole } from '../generated/prisma/enums.js';
+import { BusStatus, UserRole } from '../generated/prisma/enums.js';
 import { FindBusesQueryDto } from './dto/find-buses-query.dto.js';
 
 @Controller('buses')
@@ -45,5 +45,19 @@ export class BusesController {
   @Delete(':id')
   remove(@Param('id', ParseIntPipe) id: number) {
     return this.busesService.remove(id);
+  }
+
+  @UseGuards(AuthGuard, RoleGuard)
+  @Roles(UserRole.ADMIN)
+  @Get('count')
+  count() {
+    return this.busesService.count();
+  }
+
+  @UseGuards(AuthGuard, RoleGuard)
+  @Roles(UserRole.ADMIN)
+  @Get('count/status/:status')
+  countStatus(@Param('status', new ParseEnumPipe(BusStatus)) status: BusStatus) {
+    return this.busesService.countStatus(status);
   }
 }

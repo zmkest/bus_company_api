@@ -20,7 +20,7 @@ export class CreateBusDto {
     year: number;
 
     @IsNumber()
-    odometerkm: number;
+    odometerKm: number;
 
     @IsOptional()
     @Transform(({ value }) =>
