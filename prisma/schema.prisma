@@ -59,6 +59,8 @@ model Bus {
   trips         Trip[]
   maintenances  Maintenance[]
   statusHistory BusStatusHistory[]
+
+  @@index([createdAt])
 }
 
 /// Mapa físico de asientos del bus. La disponibilidad se calcula por viaje (Ticket).
