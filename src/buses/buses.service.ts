@@ -52,7 +52,7 @@ export class BusesService {
   }
 
   findOne(id: number) {
-    return this.prisma.bus.findMany({
+    return this.prisma.bus.findFirst({
       where: { id }
     });
   }
