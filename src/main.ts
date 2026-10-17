@@ -25,6 +25,7 @@ async function bootstrap() {
   );
 
   app.useGlobalFilters(new HttpExceptionFilter());
+  app.setGlobalPrefix('api');
 
   await app.listen(envs.port, () => `Server running on port ${envs.port}`);
 }
