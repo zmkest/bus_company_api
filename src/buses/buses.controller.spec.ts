@@ -17,7 +17,7 @@ describe('BusesController', () => {
         create: vi.fn(),
         findAll: vi.fn(),
         findOne: vi.fn(),
-        update: vi.fn(),
+        updateStatusAndHistory: vi.fn(),
         remove: vi.fn(),
         count: vi.fn(),
         countStatus: vi.fn(),
@@ -117,14 +117,14 @@ describe('BusesController', () => {
     expect(service.findOne).toHaveBeenLastCalledWith(paramId);
   })
 
-  it('update delega en el servicio', async () => {
+  it('updateAndStatusHistory delega en el servicio', async () => {
     const paramId = 5;
-    const { model, ...updateBus} = busData;
-    service.update.mockResolvedValue({ model: 'baby', ...updateBus});
+    const userId = 5;
+    service.updateStatusAndHistory.mockResolvedValue({ ...busData, status: BusStatus.MAINTENANCE});
 
-    await expect(controller.update(paramId, { model: 'baby' })).resolves.toEqual({ model: 'baby', ...updateBus});
+    await expect(controller.updateAndStatusHistory(paramId, { status: BusStatus.MAINTENANCE }, userId)).resolves.toEqual({ ...busData, status: BusStatus.MAINTENANCE});
 
-    expect(service.update).toHaveBeenLastCalledWith(paramId, { model: 'baby' });
+    expect(service.updateStatusAndHistory).toHaveBeenLastCalledWith(paramId, { status: BusStatus.MAINTENANCE }, userId);
   });
 
   it('delete delega en el servicio', async () => {
