@@ -1,14 +1,24 @@
-import { ConflictException, Injectable } from '@nestjs/common';
+import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { CreateBusDto } from './dto/create-bus.dto.js';
 import { UpdateBusDto } from './dto/update-bus.dto.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { FindBusesQueryDto } from './dto/find-buses-query.dto.js';
 import { BusStatus, Prisma } from '../generated/prisma/client.js';
 import { paginate } from '../common/interfaces/paginated.js';
+import { UpdateBusStatusDto } from './dto/update-status.dto.js';
+
+export const BUS_STATUS_TRANSITIONS: Record<BusStatus, readonly BusStatus[]> = {
+  [BusStatus.AVAILABLE]: [BusStatus.ON_ROUTE, BusStatus.MAINTENANCE, BusStatus.OUT_OF_SERVICE],
+  [BusStatus.ON_ROUTE]: [BusStatus.AVAILABLE],
+  [BusStatus.OUT_OF_SERVICE]: [BusStatus.AVAILABLE],
+  [BusStatus.MAINTENANCE]: [BusStatus.AVAILABLE],
+}
 
 @Injectable()
 export class BusesService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+  ) { }
 
   async create(createBusDto: CreateBusDto) {
     const { plate } = createBusDto;
@@ -27,8 +37,8 @@ export class BusesService {
     const where: Prisma.BusWhereInput = {
       ...(search && {
         OR: [
-          { plate: { contains: search, mode: 'insensitive' }},
-          { model: { contains: search, mode: 'insensitive' }},
+          { plate: { contains: search, mode: 'insensitive' } },
+          { model: { contains: search, mode: 'insensitive' } },
         ]
       })
     }
@@ -51,23 +61,72 @@ export class BusesService {
     return paginate(items, total, page, limit);
   }
 
-  findOne(id: number) {
-    return this.prisma.bus.findFirst({
+  async findOne(id: number) {
+    const bus = await this.prisma.bus.findUnique({
       where: { id }
     });
+
+    if (!bus) throw new NotFoundException(`Bus #${id} no existe`);
+
+    return bus;
   }
 
-  findByPlate(plate: string) {
-    return this.prisma.bus.findUnique({
-      where: { plate },      
-    })
+  async findByPlate(plate: string) {
+    const bus = await this.prisma.bus.findUnique({
+      where: { plate },
+    });
+
+    if (!bus) throw new NotFoundException(`Bus ${plate} no existe`);
+
+    return bus;
   }
 
-  update(id: number, updateBusDto: UpdateBusDto) {
+  async update(id: number, updateBusDto: UpdateBusDto) {
+    await this.findOne(id);
+
     return this.prisma.bus.update({
-      where: { id },
-      data: updateBusDto
-    })
+        where: { id },
+        data: updateBusDto,
+      });
+  }
+  
+  async updateStatusAndHistory(id: number, updateBusStatusDto: UpdateBusStatusDto, userId: number) {
+    const { status: toStatus, reason } = updateBusStatusDto;
+
+    return this.prisma.$transaction(async (tx) => {
+      const bus = await tx.bus.findUnique({ where: { id } });
+      if (!bus) throw new NotFoundException('El bus no existe');
+
+      if (toStatus === bus.status) throw new ConflictException('No puede cambiar al mismo estado');
+
+      const allowed = BUS_STATUS_TRANSITIONS[bus.status];
+      if (!allowed.includes(toStatus)) {
+        throw new ConflictException(`No se puede pasar de ${bus.status} a ${toStatus}. Permitidos: ${allowed.join(', ') || 'ninguno'}`);
+      }
+
+      if (toStatus === BusStatus.MAINTENANCE && !reason) {
+        throw new ConflictException('Al pasar a Mantenimiento debe se indicar una razón')
+      }
+
+      const { count } = await tx.bus.updateMany({
+        where: { id, status: bus.status },
+        data: { status: toStatus },
+      });
+
+      if (count === 0) throw new ConflictException('El estado del bus cambió, intenta de nuevo');
+
+      await tx.busStatusHistory.create({
+        data: {
+          busId: id,
+          fromStatus: bus.status,
+          toStatus: toStatus,
+          changedById: userId,
+          reason
+        },
+      });
+      
+      return tx.bus.findUniqueOrThrow({ where: { id }});
+    });
   }
 
   remove(id: number) {

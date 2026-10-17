@@ -152,9 +152,7 @@ export class AuthService {
 
     const passwordHash = await bcrypt.hash(newPassword, 10);
 
-    const exist = await this.user.findOne(payload.sub);
-
-    if (!exist) throw new NotFoundException('El usuario no existe');
+    await this.user.findOne(payload.sub);
 
     return await this.user.changePassword(payload.sub, passwordHash);
   }
@@ -210,9 +208,7 @@ export class AuthService {
     if (newPassword !== repitNewPassword) throw new BadRequestException('Las contraseñas no coinciden');
 
     const newPasswordHash = await bcrypt.hash(newPassword, 10);
-    const exist = await this.user.findOne(payload.sub);
-
-    if (!exist) throw new NotFoundException('El usuario no existe');
+    await this.user.findOne(payload.sub);
 
     return this.user.changePassword(payload.sub, newPasswordHash);
   }

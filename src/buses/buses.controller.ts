@@ -7,6 +7,8 @@ import { RoleGuard } from '../common/guards/role.guard.js';
 import { Roles } from '../common/decorators/roles-user.decorator.js';
 import { BusStatus, UserRole } from '../generated/prisma/enums.js';
 import { FindBusesQueryDto } from './dto/find-buses-query.dto.js';
+import { CurrentUserId } from '../common/decorators/current-user.decorator.js';
+import { UpdateBusStatusDto } from './dto/update-status.dto.js';
 
 @Controller('buses')
 export class BusesController {
@@ -34,10 +36,24 @@ export class BusesController {
   }
 
   @UseGuards(AuthGuard, RoleGuard)
-  @Roles(UserRole.ADMIN)
+  @Roles(UserRole.ADMIN, UserRole.OPERATOR)
   @Patch(':id')
-  update(@Param('id', ParseIntPipe) id: number, @Body() updateBusDto: UpdateBusDto) {
-    return this.busesService.update(+id, updateBusDto);
+  update(
+    @Param('id', ParseIntPipe) id: number, 
+    @Body() updateBusDto: UpdateBusDto,
+  ) {
+    return this.busesService.update(id, updateBusDto);
+  }
+
+  @UseGuards(AuthGuard, RoleGuard)
+  @Roles(UserRole.ADMIN, UserRole.OPERATOR)
+  @Patch(':id')
+  updateAndStatusHistory(
+    @Param('id', ParseIntPipe) id: number, 
+    @Body() updateBusDto: UpdateBusStatusDto,
+    @CurrentUserId() userId: number,
+  ) {
+    return this.busesService.updateStatusAndHistory(id, updateBusDto, userId);
   }
 
   @UseGuards(AuthGuard, RoleGuard)

@@ -65,10 +65,8 @@ export class UserService {
   }
 
   async update(id: number, updateUser: UpdateUserDto) {
-    const exist = await this.findOne(id);
+    const user = await this.findOne(id);
     
-    if (!exist) throw new NotFoundException('El usuario no existe');
-
     const userUpdate = await this.prisma.user.update({
       where: { id },
       data: updateUser,
@@ -80,9 +78,7 @@ export class UserService {
   }
 
   async updateActive(id: number, isActive: boolean) {
-    const exist = await this.findOne(id);
-    
-    if (!exist) throw new NotFoundException('El usuario no existe');
+    await this.findOne(id);
     
     const userUpdate = await this.prisma.user.update({
       where: { id },
@@ -103,9 +99,12 @@ export class UserService {
   }
 
   async findOne(id: number) {
-    return await this.prisma.user.findUnique({
+    const user = await this.prisma.user.findUnique({
       where: { id }
     });
+
+    if (!user) throw new NotFoundException('El usuario no existe');
+    return user;
   }
 
   async findByEmail(email: string) {
