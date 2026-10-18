@@ -3,10 +3,49 @@
 A backend API for managing bus trips, ticket sales, and seat allocation.
 
 ## Features
-- Authentication and Authorization
-- Trip management
-- Ticket sales
-- Seat allocation
+- [ ] **Authentication**
+  - [x] RolesGuard and `@Roles()` decorator
+  - [x] Register
+  - [x] Login with JWT (refresh token in HTTP-only cookie)
+  - [x] Refresh token
+  - [x] Logout (clear cookie)
+  - [x] JWT guard (attach user to request)
+  - [ ] Change password
+  - [ ] Forgot password
+  - [ ] Reset password
+
+- [x] **Users**
+  - [x] Create user (ADMIN)
+  - [x] Update user (ADMIN)
+  - [x] Update user status (ADMIN)
+  - [x] Get users (paginated)
+  - [x] Get user by id
+  - [x] Delete user by id
+  - [x] Count users
+  - [x] Count users by status
+
+- [ ] **Buses**
+  - [x] Create bus (ADMIN)
+  - [x] Get buses (paginated, ADMIN)
+  - [x] Get bus by id
+  - [x] Update bus by id
+  - [x] Delete bus by id
+  - [x] Count buses
+  - [x] Count buses by status
+  - [ ] Update bus status
+    - [x] Save change in status history
+    - [ ] Create maintenance when status is `MAINTENANCE`
+   - [ ] **Status History**
+      - [x] Get status history (paginated)
+      - [x] Get status history by id
+   - [ ] **Seats**
+      - [ ] Create seats by busId
+      - [ ] Delete seats by id
+      - [ ] Get seats (paginated, filter by bus plate)
+   - [ ] **Maintenance**
+      - [ ] Update maintenance (cost, finishedAt)
+      - [ ] Delete maintenance (cascade delete related records)
+      - [ ] Get maintenances (paginated, filter by plate, startedAt, finishedAt, type)
 
 ## Tech Stack
 - NestJS v12

@@ -2,7 +2,6 @@ import { Controller, Post, Body, UseGuards, Res, Req, HttpCode, HttpStatus, Unau
 import { AuthService } from './auth.service.js';
 import { CreateAuthDto } from './dto/create-auth.dto.js';
 import { CredentialsDto } from './dto/credential.dto.js';
-import { CurrentUserId } from '../../common/decorators/current-user.decorator.js';
 import { AuthGuard } from './common/guards/auth.guard.js';
 import { Roles } from '../../common/decorators/roles-user.decorator.js';
 import { UserRole } from '../../generated/prisma/enums.js';
