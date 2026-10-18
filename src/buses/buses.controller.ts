@@ -47,7 +47,7 @@ export class BusesController {
 
   @UseGuards(AuthGuard, RoleGuard)
   @Roles(UserRole.ADMIN, UserRole.OPERATOR)
-  @Patch(':id')
+  @Patch(':id/status-history')
   updateAndStatusHistory(
     @Param('id', ParseIntPipe) id: number, 
     @Body() updateBusDto: UpdateBusStatusDto,

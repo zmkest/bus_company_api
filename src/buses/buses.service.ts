@@ -101,8 +101,8 @@ export class BusesService {
         throw new ConflictException(`No se puede pasar de ${bus.status} a ${toStatus}. Permitidos: ${allowed.join(', ') || 'ninguno'}`);
       }
 
-      if (toStatus === BusStatus.MAINTENANCE && !reason) {
-        throw new ConflictException('Al pasar a Mantenimiento debe se indicar una razón')
+      if ((toStatus === BusStatus.MAINTENANCE || toStatus === BusStatus.OUT_OF_SERVICE) && !reason) {
+        throw new ConflictException('Se debe se indicar una razón de este cambio')
       }
 
       const { count } = await tx.bus.updateMany({
