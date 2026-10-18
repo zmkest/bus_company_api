@@ -23,8 +23,7 @@ export class BusesService {
   async create(createBusDto: CreateBusDto) {
     const { plate } = createBusDto;
 
-    const exist = await this.findByPlate(plate);
-    if (exist) throw new ConflictException(`El bus con la placa ${plate} ya se encuentra registrado`);
+    await this.findByPlate(plate);
 
     return this.prisma.bus.create({
       data: createBusDto
@@ -76,9 +75,7 @@ export class BusesService {
       where: { plate },
     });
 
-    if (!bus) throw new NotFoundException(`Bus ${plate} no existe`);
-
-    return bus;
+    if (bus) throw new ConflictException(`El bus con la placa ${plate} ya se encuentra registrado`);
   }
 
   async update(id: number, updateBusDto: UpdateBusDto) {
