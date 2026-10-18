@@ -22,20 +22,20 @@ export class StatusHistoryService {
     }
 
     async findAll(query: FindBusStatusHistoryDto) {
-        const { limit, order, page, sortBy, search } = query;
+        const { limit, order, page, sortBy, search, toStatus, fromStatus } = query;
 
-        const statusMatch = Object.values(BusStatus).find(
-            (s) => s.toLowerCase() === search?.toLowerCase()
-        );
+        const where: Prisma.BusStatusHistoryWhereInput = {
+            ...(fromStatus && { fromStatus }),
+            ...(toStatus && { toStatus }),
+            ...(search && {
+                    OR: [
+                        { bus: { plate: { contains: search, mode: 'insensitive' }}},
+                        { reason: { contains: search, mode: 'insensitive' } },
+                        { changedBy: { name: { contains: search, mode: 'insensitive' } } },
+                    ]
+                })
 
-        const where: Prisma.BusStatusHistoryWhereInput = search
-            ? {
-                OR: [
-                    ...(statusMatch ? [{ fromStatus: statusMatch }] : []),
-                    { reason: { contains: search, mode: 'insensitive' } },
-                    { changedBy: { name: { contains: search, mode: 'insensitive' } } },
-                ]
-            } : {}
+        }
         const orderBy: Prisma.BusStatusHistoryOrderByWithRelationInput[] = [
             { [sortBy]: order },
             { id: order }
@@ -46,11 +46,19 @@ export class StatusHistoryService {
                 where,
                 orderBy,
                 skip: (page - 1) * limit,
-                take: limit
+                take: limit,
+                include: { 
+                    changedBy: { select: { name: true }},  
+                    bus: { select: { plate: true }}
+                }
             }),
             this.prismaService.busStatusHistory.count({ where })
         ]);
 
-        return paginate(items, total, page, limit);
+        const refactorItems = items.map((i) => {
+            const { changedBy, bus, ...data } = i;
+            return { changedByName: changedBy.name, busPlate: bus.plate, ...data }
+        })
+        return paginate(refactorItems, total, page, limit);
     }
 }

@@ -1,8 +1,9 @@
-import { IsIn, IsOptional, IsString, MaxLength } from "class-validator";
+import { IsEnum, IsIn, IsOptional, IsString, MaxLength } from "class-validator";
 import { PaginationQueryDto } from "../../../common/dtos/pagination-query.dto.js";
 import { Transform } from "class-transformer";
+import { BusStatus } from "../../../generated/prisma/enums.js";
 
-export const STATUS_HISTORY_SORT_FIELDS = ['createdAt', 'fromStatus', 'reason', 'changedBy' ]
+export const STATUS_HISTORY_SORT_FIELDS = ['createdAt', 'fromStatus', 'toStatus', 'changedBy' ];
 export class FindBusStatusHistoryDto extends PaginationQueryDto {
     @IsOptional()
     @Transform(( { value }) => value?.trim())
@@ -17,4 +18,12 @@ export class FindBusStatusHistoryDto extends PaginationQueryDto {
     @IsOptional()
     @IsIn(['asc', 'desc'])
     order: 'asc' | 'desc' = 'desc';
+
+    @IsOptional()
+    @IsEnum(BusStatus, { message: 'Estado no válido' })
+    fromStatus?: BusStatus;
+
+    @IsOptional()
+    @IsEnum(BusStatus, { message: 'Estado no válido' })
+    toStatus?: BusStatus;
 }

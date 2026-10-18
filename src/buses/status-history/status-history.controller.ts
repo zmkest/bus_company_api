@@ -6,21 +6,21 @@ import { Roles } from '../../common/decorators/roles-user.decorator.js';
 import { UserRole } from '../../generated/prisma/enums.js';
 import { FindBusStatusHistoryDto } from './dto/find-status-history.dto.js';
 
-@Controller('buses/status-history')
+@Controller('status-history')
 export class StatusHistoryController {
   constructor(private readonly statusHistoryService: StatusHistoryService) {}
-
-  @UseGuards(AuthGuard, RoleGuard)
-  @Roles(UserRole.ADMIN, UserRole.OPERATOR)
-  @Get()
-  findOne(@Param('id', ParseIntPipe) id: number) {
-    return this.statusHistoryService.findOne(id);
-  }
-
+  
   @UseGuards(AuthGuard, RoleGuard)
   @Roles(UserRole.ADMIN, UserRole.OPERATOR)
   @Get()
   findAll(@Query() query: FindBusStatusHistoryDto) {
     return this.statusHistoryService.findAll(query);
+  }
+
+  @UseGuards(AuthGuard, RoleGuard)
+  @Roles(UserRole.ADMIN, UserRole.OPERATOR)
+  @Get(':id')
+  findOne(@Param('id', ParseIntPipe) id: number) {
+    return this.statusHistoryService.findOne(id);
   }
 }
