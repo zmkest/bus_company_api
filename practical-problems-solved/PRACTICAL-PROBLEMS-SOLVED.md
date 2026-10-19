@@ -143,7 +143,7 @@ Write these with Jest and Supertest.
 - [ ] A `DRIVER` receives `403`
 - [ ] A request without a token receives `401`
 - [ ] A deactivated user with a valid token receives `401`
-- [ ] `ON_ROUTE → MAINTENANCE` returns `409`
+- [x] `ON_ROUTE → MAINTENANCE` returns `409`
 - [ ] `AVAILABLE → MAINTENANCE` without `reason` returns `400`
 - [ ] A valid change leaves exactly **one** history row with the correct `changedById`
 - [ ] If the history write fails, the bus status is **not** changed (force the failure with a mock)
