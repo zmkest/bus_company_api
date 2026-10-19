@@ -2,7 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { BusesService } from './buses.service.js';
 import { AuthGuard } from '../identity/auth/common/guards/auth.guard.js';
 import { RoleGuard } from '../common/guards/role.guard.js';
-import { BusStatus } from '../generated/prisma/enums.js';
+import { BusStatus, MaintenanceType } from '../generated/prisma/enums.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { ConflictException, NotFoundException } from '@nestjs/common';
 
@@ -18,7 +18,10 @@ describe('BusesService', () => {
     },
     $transaction: vi.fn(),
     busStatusHistory: {
-      create: vi.fn()
+      create: vi.fn(),
+    },
+    maintenance: {
+      findFirst: vi.fn(),
     }
   };
 
@@ -110,5 +113,18 @@ describe('BusesService', () => {
 
       expect(prismaMock.busStatusHistory.create).not.toHaveBeenCalled();
     });
+
+    it ('Si falla la escritura del historial, el bus no cambia de estado', async () => {
+      const { id: busId, ...data } = busData;
+      const dataupdate = { ...data, status: BusStatus.MAINTENANCE };
+
+      prismaMock.bus.findUnique.mockResolvedValue(busData);
+      prismaMock.bus.updateMany.mockResolvedValue({ count: 1 });
+      prismaMock.busStatusHistory.create.mockRejectedValue({});
+
+      await expect(service.updateStatusAndHistory(busId, {...dataupdate, type: MaintenanceType.PREVENTIVE, startedAt: new Date()}, userId))
+        .rejects.toThrow();
+        
+    })
   });
 });
