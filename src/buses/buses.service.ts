@@ -6,13 +6,7 @@ import { FindBusesQueryDto } from './dto/find-buses-query.dto.js';
 import { BusStatus, Maintenance, Prisma } from '../generated/prisma/client.js';
 import { paginate } from '../common/interfaces/paginated.js';
 import { UpdateBusStatusDto } from './dto/update-status.dto.js';
-
-export const BUS_STATUS_TRANSITIONS: Record<BusStatus, readonly BusStatus[]> = {
-  [BusStatus.AVAILABLE]: [BusStatus.ON_ROUTE, BusStatus.MAINTENANCE, BusStatus.OUT_OF_SERVICE],
-  [BusStatus.ON_ROUTE]: [BusStatus.AVAILABLE],
-  [BusStatus.OUT_OF_SERVICE]: [BusStatus.AVAILABLE, BusStatus.MAINTENANCE],
-  [BusStatus.MAINTENANCE]: [BusStatus.AVAILABLE, BusStatus.OUT_OF_SERVICE],
-}
+import { canTransition } from './common/rules/bus-status.rules.js';
 
 @Injectable()
 export class BusesService {
@@ -100,9 +94,8 @@ export class BusesService {
         throw new ConflictException('El bus ya tiene ese estado');
       }
 
-      const allowed = BUS_STATUS_TRANSITIONS[bus.status];
-      if (!allowed.includes(toStatus)) {
-        throw new ConflictException(`No se puede pasar de ${bus.status} a ${toStatus}. Permitidos: ${allowed.join(', ') || 'ninguno'}`);
+      if (!canTransition(fromStatus, toStatus)) {
+        throw new ConflictException(`No se puede pasar de ${bus.status} a ${toStatus}`);
       }
 
       const entering = toStatus === BusStatus.MAINTENANCE;
