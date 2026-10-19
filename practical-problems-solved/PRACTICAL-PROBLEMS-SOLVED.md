@@ -148,7 +148,7 @@ Write these with Jest and Supertest.
 - [ ] A valid change leaves exactly **one** history row with the correct `changedById`
 - [ ] If the history write fails, the bus status is **not** changed (force the failure with a mock)
 - [ ] **Key test:** fire two requests with `Promise.all` against the same `AVAILABLE` bus (one to `MAINTENANCE`, one to `ON_ROUTE`). Exactly one responds `200`, the other `409`, and the history has **one** row
-- [ ] The transition table is covered by unit tests that do not touch the database
+- [x] The transition table is covered by unit tests that do not touch the database
 
 ### Hints
 
