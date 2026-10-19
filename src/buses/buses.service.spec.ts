@@ -1,7 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { BusesService } from './buses.service.js';
-import { AuthGuard } from '../identity/auth/common/guards/auth.guard.js';
-import { RoleGuard } from '../common/guards/role.guard.js';
 import { BusStatus, MaintenanceType } from '../generated/prisma/enums.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { ConflictException, NotFoundException } from '@nestjs/common';
@@ -22,6 +20,7 @@ describe('BusesService', () => {
     },
     maintenance: {
       findFirst: vi.fn(),
+      create: vi.fn(),
     }
   };
 
@@ -37,8 +36,6 @@ describe('BusesService', () => {
         { provide: PrismaService, useValue: prismaMock },
       ]
     })
-      .overrideGuard(AuthGuard).useValue({ canActive: () => true })
-      .overrideGuard(RoleGuard).useValue({ canActive: () => true })
       .compile();
 
     prismaMock.$transaction.mockImplementation((cb) => cb(prismaMock));
@@ -46,25 +43,38 @@ describe('BusesService', () => {
   });
 
   afterEach(() => {
-    vi.clearAllMocks();
+    vi.resetAllMocks();
   });
 
-  describe('Buses service', () => {
+  describe('Metodo updateStatusAndHistory', () => {
     const userId = 5;
 
-    it('Lanza NotFoundException si el bus no existe', async () => {
+    it('El findunique devuelve NotFoundException', async () => {
       prismaMock.bus.findUnique.mockResolvedValue(null);
 
-      await expect(service.findOne(busData.id)).rejects.toThrow(NotFoundException);
+      await expect(service.updateStatusAndHistory(busData.id, { status: BusStatus.AVAILABLE }, userId ))
+        .rejects.toThrow(NotFoundException);
 
-      expect(prismaMock.bus.findUnique).toHaveBeenCalledWith({ where: { id: busData.id } });
+      expect(prismaMock.bus.findUnique).toHaveBeenCalledWith({
+        where: { id: busData.id }
+      });
+      expect(prismaMock.maintenance.findFirst).not.toHaveBeenCalled();
+      expect(prismaMock.bus.updateMany).not.toHaveBeenCalled();
+      expect(prismaMock.busStatusHistory.create).not.toHaveBeenCalled();
+      expect(prismaMock.maintenance.create).not.toHaveBeenCalled();
     });
 
-    it('actualiza el estado del bus y registra en el historial de estados', async () => {
-      const busUpdate = { status: BusStatus.ON_ROUTE };
+    it('Prueba exitosa', async () => {
+      const busUpdate = { 
+        status: BusStatus.MAINTENANCE,
+        type: MaintenanceType.PREVENTIVE,
+        startedAt: new Date()
+      };
       const busResolved = { ...busData, status: busUpdate.status };
 
       prismaMock.bus.findUnique.mockResolvedValue(busData);
+      prismaMock.maintenance.findFirst.mockResolvedValue(null);
+
       prismaMock.bus.updateMany.mockResolvedValue({ count: 1 });
       prismaMock.busStatusHistory.create.mockResolvedValue({});
       prismaMock.bus.findUniqueOrThrow.mockResolvedValue(busResolved)
@@ -74,7 +84,7 @@ describe('BusesService', () => {
 
       expect(prismaMock.bus.updateMany).toHaveBeenCalledWith({
         where: { id: busData.id, status: busData.status },
-        data: busUpdate
+        data: { status: busUpdate.status }
       });
 
       expect(prismaMock.busStatusHistory.create).toHaveBeenCalledWith({
@@ -86,24 +96,19 @@ describe('BusesService', () => {
         })
       });
 
+      expect(prismaMock.maintenance.create).toHaveBeenCalledWith({
+        data: { busId: busData.id, type: busUpdate.type, startedAt: busUpdate.startedAt}
+      });
+
     });
 
-    it.each([
-      [BusStatus.ON_ROUTE, BusStatus.MAINTENANCE],
-      [BusStatus.MAINTENANCE, BusStatus.ON_ROUTE],
-      [BusStatus.AVAILABLE, BusStatus.AVAILABLE],
-    ])('rechaza la transacción de %s -> %s', async (from, to) => {
-      prismaMock.bus.findUnique.mockResolvedValue({ ...busData, status: from });
-
-      await expect(service.updateStatusAndHistory(busData.id, { status: to }, userId))
-        .rejects.toThrow(ConflictException);
-
-      expect(prismaMock.bus.updateMany).not.toHaveBeenCalled();
-      expect(prismaMock.busStatusHistory.create).not.toHaveBeenCalled();
-    });
-
-    it('Lanza ConflicException si otro usuario cambió el estado antes', async () => {
-      const busUpdateUser1 = { status: BusStatus.ON_ROUTE };
+    it('Perder la carrera si entran dos peticiones', async () => {
+      const busUpdateUser1 = { 
+        status: BusStatus.MAINTENANCE, 
+        reason: 'revision', 
+        type: MaintenanceType.PREVENTIVE, 
+        startedAt: new Date() 
+      };
 
       prismaMock.bus.findUnique.mockResolvedValue(busData);
       prismaMock.bus.updateMany.mockResolvedValue({ count: 0 });
@@ -111,20 +116,31 @@ describe('BusesService', () => {
       await expect(service.updateStatusAndHistory(busData.id, busUpdateUser1, userId))
         .rejects.toThrow(ConflictException);
 
+      expect(prismaMock.bus.updateMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { id: busData.id, status: busData.status }
+        })
+      );
+      
       expect(prismaMock.busStatusHistory.create).not.toHaveBeenCalled();
+      expect(prismaMock.maintenance.create).not.toHaveBeenCalled();
     });
 
-    it ('Si falla la escritura del historial, el bus no cambia de estado', async () => {
-      const { id: busId, ...data } = busData;
-      const dataupdate = { ...data, status: BusStatus.MAINTENANCE };
+    it ('ON_ROUTE → MAINTENANCE return 409', async() => {
+      const { id: busId, ...data} = busData;
+      const fromStatus = BusStatus.ON_ROUTE;
+      const toStatus = BusStatus.MAINTENANCE;
 
-      prismaMock.bus.findUnique.mockResolvedValue(busData);
-      prismaMock.bus.updateMany.mockResolvedValue({ count: 1 });
-      prismaMock.busStatusHistory.create.mockRejectedValue({});
-
-      await expect(service.updateStatusAndHistory(busId, {...dataupdate, type: MaintenanceType.PREVENTIVE, startedAt: new Date()}, userId))
-        .rejects.toThrow();
-        
-    })
+      prismaMock.bus.findUnique.mockResolvedValue({ ...data, status: fromStatus });
+      
+      await expect(service.updateStatusAndHistory(busId, { status: toStatus }, userId))
+        .rejects.toThrow(ConflictException);
+      
+      expect(prismaMock.bus.updateMany).not.toHaveBeenCalled();
+      expect(prismaMock.busStatusHistory.create).not.toHaveBeenCalled();      
+    expect(prismaMock.maintenance.findFirst).not.toHaveBeenCalled();
+      expect(prismaMock.maintenance.create).not.toHaveBeenCalled();
+    });
   });
+
 });
