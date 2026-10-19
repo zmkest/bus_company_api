@@ -1,17 +1,54 @@
-import { Transform } from "class-transformer";
-import { IsEnum, IsOptional, IsString, MaxLength } from "class-validator";
-import { BusStatus } from "../../generated/prisma/enums.js";
+import { Transform, Type } from "class-transformer";
+import { IsDate, IsEnum, IsNotEmpty, IsNumber, IsOptional, IsString, MaxLength, Min, ValidateIf } from "class-validator";
+import { BusStatus, MaintenanceType } from "../../generated/prisma/enums.js";
 
+const toUpper = ({ value }: { value: unknown }) =>
+    typeof value === 'string' ? value.trim().toUpperCase() : value;
+
+const trim = ({ value }: { value: unknown }) =>
+    typeof value === 'string' ? value.trim() : value;
 
 export class UpdateBusStatusDto {
-    @Transform(({ value }) =>
-        typeof value === 'string' ? value.trim().toUpperCase() : value,
-    )
-    @IsEnum(BusStatus, { message: 'Estado de bus inconsistente'})
-    status: BusStatus = BusStatus.AVAILABLE;
+    @Transform(toUpper)
+    @IsEnum(BusStatus, { message: 'Estado de bus no válido'})
+    status: BusStatus;
+
+    @ValidateIf((o) => o.status === BusStatus.OUT_OF_SERVICE || o.status === BusStatus.MAINTENANCE)
+    @Transform(trim)
+    @IsString()
+    @IsNotEmpty({ message: 'La razón para este cambio de estado es requerida' })
+    @MaxLength(255)
+    reason?: string;
+
+    // Apertura a mantenimiento
+    @ValidateIf((o) => o.status === BusStatus.MAINTENANCE)
+    @Transform(toUpper)
+    @IsNotEmpty({ message: 'El tipo de mantenimiento es requerido' })
+    @IsEnum(MaintenanceType, { message: 'Tipo de mantenimiento no válido'})
+    type?: MaintenanceType;
+
+    @ValidateIf((o) => o.status === BusStatus.MAINTENANCE)
+    @Type(() => Date)
+    @IsNotEmpty({ message: 'La fecha de inicio es requerida para el mantenimiento' })
+    @IsDate({ message: 'startedAt debe ser una fecha válida'})
+    startedAt?: Date;
+
+    // Validación dentro del servicio
+    @IsOptional()
+    @Transform(trim)
+    @IsString()
+    @MaxLength(255)
+    description?: string;
 
     @IsOptional()
-    @IsString()
-    @MaxLength(250)
-    reason?: string;
+    @Type(() => Number)
+    @IsNumber({ maxDecimalPlaces: 2 }, { message: 'El costo debe ser un número con máximo 2 decimales' })
+    @Min(0, { message: 'El costo no puede ser negativo'})
+    cost?: number;
+
+
+    @IsOptional()
+    @Type(() => Date)
+    @IsDate({ message: 'finishedAt debe ser una fecha válida'})
+    finishedAt?: Date;
 }

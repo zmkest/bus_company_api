@@ -32,10 +32,10 @@ A backend API for managing bus trips, ticket sales, and seat allocation.
   - [x] Delete bus by id
   - [x] Count buses
   - [x] Count buses by status
-  - [ ] Update bus status
+  - [x] Update bus status
     - [x] Save change in status history
-    - [ ] Create maintenance when status is `MAINTENANCE`
-   - [ ] **Status History**
+    - [x] Create maintenance when status is `MAINTENANCE`
+   - [x] **Status History**
       - [x] Get status history (paginated)
       - [x] Get status history by id
    - [ ] **Seats**

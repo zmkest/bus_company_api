@@ -99,8 +99,8 @@ model Maintenance {
   id          Int             @id @default(autoincrement())
   busId       Int
   type        MaintenanceType
-  description String
-  cost        Decimal         @db.Decimal(10, 2)
+  description String?
+  cost        Decimal?        @db.Decimal(10, 2)
   startedAt   DateTime
   finishedAt  DateTime?
   createdAt   DateTime        @default(now())
@@ -108,6 +108,7 @@ model Maintenance {
   bus Bus @relation(fields: [busId], references: [id], onDelete: Restrict)
 
   @@index([busId, startedAt])
+  @@index([busId, finishedAt])
 }
 
 // ───────────────────────── Red y horarios ─────────────────────────
