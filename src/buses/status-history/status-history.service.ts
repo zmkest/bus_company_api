@@ -1,7 +1,7 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service.js';
 import { FindBusStatusHistoryDto } from './dto/find-status-history.dto.js';
-import { BusStatus, Prisma } from '../../generated/prisma/client.js';
+import { Prisma } from '../../generated/prisma/client.js';
 import { paginate } from '../../common/interfaces/paginated.js';
 
 @Injectable()

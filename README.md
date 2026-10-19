@@ -10,6 +10,7 @@ A backend API for managing bus trips, ticket sales, and seat allocation.
   - [x] Refresh token
   - [x] Logout (clear cookie)
   - [x] JWT guard (attach user to request)
+   - [x] User is active
   - [ ] Change password
   - [ ] Forgot password
   - [ ] Reset password
