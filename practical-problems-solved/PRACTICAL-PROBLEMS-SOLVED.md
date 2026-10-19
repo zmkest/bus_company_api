@@ -128,7 +128,7 @@ Implement `PATCH /buses/:id/status-history` with body `{ "status": "...", "reaso
    | `AVAILABLE` | `ON_ROUTE`, `MAINTENANCE`, `OUT_OF_SERVICE` |
    | `ON_ROUTE` | `AVAILABLE` |
    | `MAINTENANCE` | `AVAILABLE`, `OUT_OF_SERVICE` |
-   | `OUT_OF_SERVICE` | `MAINTENANCE` |
+   | `OUT_OF_SERVICE` | `AVAILABLE`, `MAINTENANCE` |
 
    Any other transition returns `409 Conflict` with a clear message.
 3. **`reason` is required** when the target is `MAINTENANCE` or `OUT_OF_SERVICE` (`400` otherwise).
