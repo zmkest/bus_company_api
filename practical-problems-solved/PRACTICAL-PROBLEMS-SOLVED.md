@@ -144,7 +144,7 @@ Write these with Jest and Supertest.
 - [ ] A request without a token receives `401`
 - [ ] A deactivated user with a valid token receives `401`
 - [x] `ON_ROUTE → MAINTENANCE` returns `409`
-- [ ] `AVAILABLE → MAINTENANCE` without `reason` returns `400` (DTO unit test done, e2e pending)
+- [x] `AVAILABLE → MAINTENANCE` without `reason` returns `400`
 - [ ] A valid change leaves exactly **one** history row with the correct `changedById`
 - [ ] If the history write fails, the bus status is **not** changed (force the failure with a mock)
 - [ ] **Key test:** fire two requests with `Promise.all` against the same `AVAILABLE` bus (one to `MAINTENANCE`, one to `ON_ROUTE`). Exactly one responds `200`, the other `409`, and the history has **one** row
@@ -164,7 +164,7 @@ Write these with Jest and Supertest.
 
 ### Resolution
 
-> To be completed after solving the ticket.
+> reason is validated only at the DTO boundary; mutation showed the service accepts it without the pipe. Accepted for now; move to domain rules when a non-HTTP caller appears.
 
 **Approach:**
 
