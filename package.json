@@ -22,7 +22,7 @@
     "db:test:status": "pnpm dotenv run -f .env.test -- prisma migrate status",
     "db:test:migrate": "pnpm dotenv run -f .env.test -- prisma migrate deploy",
     "db:test:reset": "pnpm dotenv run -f .env.test -- prisma migrate reset --force",
-    "test:e2e": "pnpm db:test:reset && dotenv run --override -f .env.test -- vitest run --config ./vitest.config.e2e.ts"
+    "test:e2e": "pnpm db:test:migrate && dotenv run --override -f .env.test -- vitest run --config ./vitest.config.e2e.ts"
   },
   "dependencies": {
     "@nestjs/authorization": "^0.0.1",
