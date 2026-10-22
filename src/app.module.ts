@@ -14,7 +14,10 @@ import { APP_GUARD } from '@nestjs/core';
     ThrottlerModule.forRoot([
       { name: 'default', ttl: 60_000, limit: 100 }
     ]),
-    ConfigModule.forRoot({ isGlobal: true }), 
+    ConfigModule.forRoot({ 
+      isGlobal: true,
+      envFilePath: process.env.NODE_ENV === 'test' ? '.env.test' : '.env'
+    }), 
     AuthModule, 
     PrismaModule, 
     UserModule, 
