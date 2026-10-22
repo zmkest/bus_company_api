@@ -15,9 +15,9 @@ export class UpdateBusStatusDto {
 
     @ValidateIf((o) => o.status === BusStatus.OUT_OF_SERVICE || o.status === BusStatus.MAINTENANCE)
     @Transform(trim)
-    @IsString()
+    @IsString({ message: 'La razón debe ser un string' })
     @IsNotEmpty({ message: 'La razón para este cambio de estado es requerida' })
-    @MaxLength(255)
+    @MaxLength(255, { message: 'La razón debe ser menor o igual a 255 caracteres' })
     reason?: string;
 
     // Apertura a mantenimiento
