@@ -118,7 +118,7 @@ The bus status drives trip scheduling and seat sales. An inconsistent status can
 
 ### Requirements
 
-Implement `PATCH /buses/:id/status-history` with body `{ "status": "...", "reason": "..." }`.
+Implement `PATCH /buses/:id/status` with body `{ "status": "...", "reason": "..." }`.
 
 1. **Authorization:** only `ADMIN` and `OPERATOR` can use it.
 2. **Valid transitions only:**
