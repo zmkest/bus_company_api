@@ -140,8 +140,8 @@ Implement `PATCH /buses/:id/status` with body `{ "status": "...", "reason": "...
 
 Write these with Jest and Supertest.
 
-- [ ] A `DRIVER` receives `403`
-- [ ] A request without a token receives `401`
+- [x] A `DRIVER` receives `403`
+- [x] A request without a token receives `401`
 - [ ] A deactivated user with a valid token receives `401`
 - [x] `ON_ROUTE → MAINTENANCE` returns `409`
 - [x] `AVAILABLE → MAINTENANCE` without `reason` returns `400`
