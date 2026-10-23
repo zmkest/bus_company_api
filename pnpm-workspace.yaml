@@ -2,3 +2,6 @@ allowBuilds:
   '@prisma/engines': true
   bcrypt: true
   prisma: true
+overrides:
+  "@nestjs/mau>undici": "^6.24.0"
+  "external-editor>tmp": "^0.2.6"
