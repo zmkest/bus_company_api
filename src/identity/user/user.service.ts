@@ -6,14 +6,14 @@ import { UpdateUserDto } from './dto/update-user.dto.js';
 import { FindUsersQueryDto } from './dto/find-users-query.dto.js';
 import { paginate } from '../../common/interfaces/paginated.js';
 
-   const userSelect = {
-      id: true,
-      name: true,
-      email: true,
-      role: true,
-      isActive: true,
-      createdAt: true,
-    } satisfies Prisma.UserSelect;
+const userSelect = {
+  id: true,
+  name: true,
+  email: true,
+  role: true,
+  isActive: true,
+  createdAt: true,
+} satisfies Prisma.UserSelect;
 
 @Injectable()
 export class UserService {
@@ -26,7 +26,7 @@ export class UserService {
     if (existing) {
       throw new ConflictException('El email ya está registrado');
     }
-    
+
     try {
       return await this.prisma.user.create({
         data: createUser,
@@ -66,7 +66,7 @@ export class UserService {
 
   async update(id: number, updateUser: UpdateUserDto) {
     const user = await this.findOne(id);
-    
+
     const userUpdate = await this.prisma.user.update({
       where: { id },
       data: updateUser,
@@ -79,7 +79,7 @@ export class UserService {
 
   async updateActive(id: number, isActive: boolean) {
     await this.findOne(id);
-    
+
     const userUpdate = await this.prisma.user.update({
       where: { id },
       data: { isActive },
@@ -124,7 +124,7 @@ export class UserService {
 
   async delete(id: number) {
     return await this.prisma.user.delete({
-      where: {id},
+      where: { id },
       select: userSelect
     });
   }
@@ -135,7 +135,7 @@ export class UserService {
 
   async countIsActive(isActive: boolean) {
     return await this.prisma.user.count({
-      where: {isActive}
+      where: { isActive }
     });
   }
 
@@ -145,8 +145,8 @@ export class UserService {
     const where: Prisma.UserWhereInput = {
       ...(search && {
         OR: [
-          { name: { contains: search, mode: 'insensitive' }},
-          { email: { contains: search, mode: 'insensitive' }}
+          { name: { contains: search, mode: 'insensitive' } },
+          { email: { contains: search, mode: 'insensitive' } }
         ]
       })
     }
@@ -154,7 +154,7 @@ export class UserService {
       this.prisma.user.findMany({
         where,
         select: userSelect,
-        orderBy: [{[sortBy]: order},{ id: 'desc'}],
+        orderBy: [{ [sortBy]: order }, { id: 'desc' }],
         skip: (page - 1) * limit,
         take: limit
       }),
@@ -162,5 +162,12 @@ export class UserService {
     ]);
 
     return paginate(items, total, page, limit);
+  }
+
+  async findActiveById(id: number) {
+    return this.prisma.user.findFirst({
+      where: { id, isActive: true },
+      select: { id: true, role: true },
+    });
   }
 }
