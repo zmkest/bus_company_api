@@ -145,7 +145,7 @@ Write these with Jest and Supertest.
 - [x] A deactivated user with a valid token receives `401`
 - [x] `ON_ROUTE → MAINTENANCE` returns `409`
 - [x] `AVAILABLE → MAINTENANCE` without `reason` returns `400`
-- [ ] A valid change leaves exactly **one** history row with the correct `changedById`
+- [x] A valid change leaves exactly **one** history row with the correct `changedById`
 - [ ] If the history write fails, the bus status is **not** changed (force the failure with a mock)
 - [ ] **Key test:** fire two requests with `Promise.all` against the same `AVAILABLE` bus (one to `MAINTENANCE`, one to `ON_ROUTE`). Exactly one responds `200`, the other `409`, and the history has **one** row
 - [x] The transition table is covered by unit tests that do not touch the database
