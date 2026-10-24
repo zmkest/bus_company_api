@@ -137,6 +137,33 @@ describe('PATCH /api/buses/:id/status', () => {
         await expectBusUnChanged(bus.id);
     });
 
+    it('return 200 and one row the Bus status history with correct changedById', async () => {
+        const user = await createUser(prisma, { role: UserRole.ADMIN });
+        const bus = await createBus(prisma, { status: BusStatus.AVAILABLE });
+        const header = await authHeader(jwt, user);
+
+        const res = await request(app.getHttpServer())
+            .patch(`/api/buses/${bus.id}/status`)
+            .set(header)
+            .send(validPayload());
+
+    
+        expect(res.status).toEqual(200);
+
+        const busAfter = await prisma.bus.findUniqueOrThrow({ where: { id: bus.id } });
+        expect(busAfter.status).toBe(BusStatus.MAINTENANCE);
+        expect(await prisma.busStatusHistory.count()).toBe(1);
+        const history = await prisma.busStatusHistory.findMany();
+        expect(history[0]).toMatchObject({
+            busId: bus.id,
+            fromStatus: bus.status,
+            toStatus: BusStatus.MAINTENANCE,
+            changedById: user.id,
+            reason: validPayload().reason
+        });
+        expect(await prisma.maintenance.count()).toBe(1);
+    });
+
     async function expectBusUnChanged(busId: number) {
         const busAfter = await prisma.bus.findUniqueOrThrow({ where: { id: busId } });
         expect(busAfter.status).toBe(BusStatus.AVAILABLE);
