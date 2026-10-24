@@ -65,7 +65,7 @@ describe('PATCH /api/buses/:id/status', () => {
         const res = await request(app.getHttpServer())
             .patch(`/api/buses/${bus.id}/status`)
             .send(validPayload());
-           
+
         expect(res.status).toEqual(401);
         await expectBusUnChanged(bus.id);
     });
@@ -74,16 +74,16 @@ describe('PATCH /api/buses/:id/status', () => {
         const user = await createUser(prisma, { role: UserRole.ADMIN });
         const header = await authHeader(jwt, user);
         const bus = await createBus(prisma, { status: BusStatus.AVAILABLE });
-        
+
         const token = header.Authorization.split(' ')[1];
-        const [th, tp, ts ] = token.split('.');
+        const [th, tp, ts] = token.split('.');
         const tokenModified = `${th}.${tp}.${ts.slice(0, 1)}nc15jdlsl`;
-        
+
         const res = await request(app.getHttpServer())
-        .patch(`/api/buses/${bus.id}/status`)
-        .set({ Authorization: `Bearer ${tokenModified}`})
-        .send(validPayload());
-        
+            .patch(`/api/buses/${bus.id}/status`)
+            .set({ Authorization: `Bearer ${tokenModified}` })
+            .send(validPayload());
+
         expect(res.status).toEqual(401);
 
         await expectBusUnChanged(bus.id);
@@ -99,34 +99,49 @@ describe('PATCH /api/buses/:id/status', () => {
             .set(header)
             .send(validPayload());
 
-            expect(res.status).toEqual(403);
-            
-            await expectBusUnChanged(bus.id);
-        });
-        
-        it('DRIVER + invalid payload: forbidden request', async () => {
-            const user = await createUser(prisma, { role: UserRole.DRIVER });
-            const header = await authHeader(jwt, user);
-            const bus = await createBus(prisma, { status: BusStatus.AVAILABLE });
-            
-            const res = await request(app.getHttpServer())
+        expect(res.status).toEqual(403);
+
+        await expectBusUnChanged(bus.id);
+    });
+
+    it('DRIVER + invalid payload: forbidden request', async () => {
+        const user = await createUser(prisma, { role: UserRole.DRIVER });
+        const header = await authHeader(jwt, user);
+        const bus = await createBus(prisma, { status: BusStatus.AVAILABLE });
+
+        const res = await request(app.getHttpServer())
             .patch(`/api/buses/${bus.id}/status`)
             .set(header)
             .send({
                 ...validPayload(),
                 status: 'FLYING',
             });
-            
-            expect(res.status).toEqual(403);
-            
-            await expectBusUnChanged(bus.id);
-        });
-        
-        async function expectBusUnChanged(busId: number) {
-            const busAfter = await prisma.bus.findUniqueOrThrow({ where: { id: busId } });
-            expect(busAfter.status).toBe(BusStatus.AVAILABLE);
-            expect(await prisma.busStatusHistory.count()).toBe(0);
-            expect(await prisma.maintenance.count()).toBe(0);
-        }
-        
+
+        expect(res.status).toEqual(403);
+
+        await expectBusUnChanged(bus.id);
+    });
+
+    it('return 401 when the user is deactivated after the token was issued', async () => {
+        const user = await createUser(prisma, { role: UserRole.ADMIN, isActive: false });
+        const bus = await createBus(prisma, { status: BusStatus.AVAILABLE });
+        const header = await authHeader(jwt, user);
+
+        const res = await request(app.getHttpServer())
+            .patch(`/api/buses/${bus.id}/status`)
+            .set(header)
+            .send(validPayload());
+
+        expect(res.status).toEqual(401);
+
+        await expectBusUnChanged(bus.id);
+    });
+
+    async function expectBusUnChanged(busId: number) {
+        const busAfter = await prisma.bus.findUniqueOrThrow({ where: { id: busId } });
+        expect(busAfter.status).toBe(BusStatus.AVAILABLE);
+        expect(await prisma.busStatusHistory.count()).toBe(0);
+        expect(await prisma.maintenance.count()).toBe(0);
+    }
+
 });
