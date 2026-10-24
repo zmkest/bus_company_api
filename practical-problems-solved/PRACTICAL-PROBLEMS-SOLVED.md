@@ -164,14 +164,59 @@ Write these with Jest and Supertest.
 
 ### Resolution
 
-> reason is validated only at the DTO boundary; mutation showed the service accepts it without the pipe. Accepted for now; move to domain rules when a non-HTTP caller appears.
-
 **Approach:**
+- Transition rules live in a pure function `canTransition(from, to)` backed by
+  `BUS_STATUS_TRANSITIONS` (`bus-status.rules.ts`). The service maps a rejected
+  transition to `409 Conflict`.
+- Concurrency uses optimistic locking: inside a `$transaction`, the bus is updated
+  with `updateMany({ where: { id, status: currentStatus } })`. If `count === 0`,
+  another request changed the status first, so the service throws `409` and the
+  history row is never written.
+  _Why optimistic and not a row lock (`SELECT ... FOR UPDATE`):_ TODO (2 lines, in my words).
+- `reason` is validated in `UpdateBusStatusDto` with `@ValidateIf` and trimmed,
+  so blank values are rejected.
+- `AuthGuard` verifies the JWT signature and loads the user with
+  `findActiveById`. Deleted or deactivated users get `401`, and the role comes
+  from the database, not from the token.
+- `CurrentUserId` fails closed: a missing or invalid user id returns `401`.
 
-**Trade-offs considered:**
+**Requirement changes:**
+- Added `OUT_OF_SERVICE → AVAILABLE` (a bus can be out of service for reasons
+  that don't need maintenance, such as fines or driver issues).
+- Changing to `MAINTENANCE` also opens a `Maintenance` record (`type`, `startedAt`).
+  Scope added beyond the original ticket.
+
+**Decisions:**
+- Same-status transitions (e.g. `AVAILABLE → AVAILABLE`) return `409`.
+- DTO validation runs before the service: `ON_ROUTE → MAINTENANCE` without
+  `reason` returns `400`, not `409`.
+- Guards run before pipes: a `DRIVER` with an invalid payload gets `403`, not `400`.
+- The user is loaded from the database on every authenticated request, so
+  deactivation and role changes apply immediately. Cost: one query per request.
+
+**Findings during the work:**
+- `@Type(() => Date)` accepted `'1102'` as a valid date (year 1102). Fixed.
+- `reason` is enforced only at the DTO boundary; a mutation test showed the
+  service accepts a missing reason without the `ValidationPipe`. Accepted for
+  now; move to domain rules when a non-HTTP caller appears.
+- Without `AuthGuard`, `CurrentUserId` crashed with a `500`. Fixed to fail closed.
+- `AuthGuard` swallowed every error as `401` (including database failures) and
+  trusted the role in the token. Fixed.
 
 **Tests added:**
+- Unit: all 50 status transition combinations (no database).
+- Unit: `BusesService` happy path, not found, invalid transition, lost race.
+- Unit: `UpdateBusStatusDto` validation rules.
+- E2E: missing reason (400), no token / malformed / tampered token (401),
+  `DRIVER` (403), `DRIVER` with invalid payload (403).
+- E2E: TODO history row, rollback, deactivated user, concurrency.
 
 **What I learned:**
+- A passing test isn't proof: mutation testing exposed tests that passed for the
+  wrong reason.
+- Prisma queries without `await` never run.
+- Migrating and cleaning the test database are different operations with very
+  different costs.
+- TODO: add what concurrency testing taught me.
 
-**PR:**
+**PR:** TODO
