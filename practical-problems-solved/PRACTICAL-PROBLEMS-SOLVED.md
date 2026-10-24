@@ -142,7 +142,7 @@ Write these with Jest and Supertest.
 
 - [x] A `DRIVER` receives `403`
 - [x] A request without a token receives `401`
-- [ ] A deactivated user with a valid token receives `401`
+- [x] A deactivated user with a valid token receives `401`
 - [x] `ON_ROUTE → MAINTENANCE` returns `409`
 - [x] `AVAILABLE → MAINTENANCE` without `reason` returns `400`
 - [ ] A valid change leaves exactly **one** history row with the correct `changedById`
@@ -210,6 +210,7 @@ Write these with Jest and Supertest.
 - E2E: missing reason (400), no token / malformed / tampered token (401),
   `DRIVER` (403), `DRIVER` with invalid payload (403).
 - E2E: TODO history row, rollback, deactivated user, concurrency.
+- E2E: deactivated user with a still-valid token (401)
 
 **What I learned:**
 - A passing test isn't proof: mutation testing exposed tests that passed for the
