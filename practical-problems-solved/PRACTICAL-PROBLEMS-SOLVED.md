@@ -102,7 +102,7 @@ Why this matters for the business.
 | Severity | High |
 | Type | Bug and Security |
 | Week | 1 |
-| Status | Open |
+| Status | In review |
 
 ### Support report
 
@@ -202,6 +202,7 @@ Write these with Jest and Supertest.
 - Without `AuthGuard`, `CurrentUserId` crashed with a `500`. Fixed to fail closed.
 - `AuthGuard` swallowed every error as `401` (including database failures) and
   trusted the role in the token. Fixed.
+- The trigger to force an error survives if it is not deleted within a `finally`, which does not work within a `catch`.
 
 **Tests added:**
 - Unit: all 50 status transition combinations (no database).
@@ -210,7 +211,9 @@ Write these with Jest and Supertest.
 - E2E: missing reason (400), no token / malformed / tampered token (401),
   `DRIVER` (403), `DRIVER` with invalid payload (403).
 - E2E: TODO history row, rollback, deactivated user, concurrency.
-- E2E: deactivated user with a still-valid token (401)
+- E2E: deactivated user with a still-valid token (401).
+- E2E: rolls back the bus change when the history insert fails.
+- E2E: Multiple requests and only one will win while the others only return 409.
 
 **What I learned:**
 - A passing test isn't proof: mutation testing exposed tests that passed for the
@@ -219,5 +222,7 @@ Write these with Jest and Supertest.
 - Migrating and cleaning the test database are different operations with very
   different costs.
 - TODO: add what concurrency testing taught me.
+- Apply mutations before each test to check for different types of errors or validations.
+- The error is caused in a `try`and not caught by `catch` , all the error is printed on console.
 
 **PR:** TODO
