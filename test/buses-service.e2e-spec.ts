@@ -7,6 +7,7 @@ import { resetDatabase } from "./helpers/db.js";
 import { createBus, createUser } from "./helpers/factories.js";
 import { authHeader } from "./helpers/auth.js";
 import { BusStatus, MaintenanceType, UserRole } from "../src/generated/prisma/enums.js";
+import { installInsertFailture } from './helpers/db-faults.js';
 
 const validPayload = () => ({
     status: BusStatus.MAINTENANCE,
@@ -162,6 +163,25 @@ describe('PATCH /api/buses/:id/status', () => {
             reason: validPayload().reason
         });
         expect(await prisma.maintenance.count()).toBe(1);
+    });
+
+    it('rolls back the bus change when the history insert fails', async () => {
+        const user = await createUser(prisma, { role: UserRole.ADMIN });
+        const bus = await createBus(prisma, { status: BusStatus.AVAILABLE });
+        const header = await authHeader(jwt, user);
+
+        const removeFailure = await installInsertFailture(prisma, 'BusStatusHistory')
+        try {
+            const res = await request(app.getHttpServer())
+                .patch(`/api/buses/${bus.id}/status`)
+                .set(header)
+                .send(validPayload());
+    
+            expect(res.status).toEqual(500);    
+            await expectBusUnChanged(bus.id);        
+        } catch (error) {
+            await removeFailure();
+        }
     });
 
     async function expectBusUnChanged(busId: number) {
