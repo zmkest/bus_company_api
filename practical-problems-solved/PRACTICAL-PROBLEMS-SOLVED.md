@@ -102,7 +102,7 @@ Why this matters for the business.
 | Severity | High |
 | Type | Bug and Security |
 | Week | 1 |
-| Status | In review |
+| Status | Done |
 
 ### Support report
 
