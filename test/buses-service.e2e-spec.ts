@@ -148,7 +148,8 @@ describe('PATCH /api/buses/:id/status', () => {
             .set(header)
             .send(validPayload());
 
-    
+
+            console.log(res.error)
         expect(res.status).toEqual(200);
 
         const busAfter = await prisma.bus.findUniqueOrThrow({ where: { id: bus.id } });
@@ -176,10 +177,10 @@ describe('PATCH /api/buses/:id/status', () => {
                 .patch(`/api/buses/${bus.id}/status`)
                 .set(header)
                 .send(validPayload());
-    
-            expect(res.status).toEqual(500);    
-            await expectBusUnChanged(bus.id);        
-        } catch (error) {
+
+            expect(res.status).toEqual(500);
+            await expectBusUnChanged(bus.id);
+        } finally {
             await removeFailure();
         }
     });
