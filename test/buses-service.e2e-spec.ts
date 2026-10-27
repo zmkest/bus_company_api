@@ -149,7 +149,6 @@ describe('PATCH /api/buses/:id/status', () => {
             .send(validPayload());
 
 
-            console.log(res.error)
         expect(res.status).toEqual(200);
 
         const busAfter = await prisma.bus.findUniqueOrThrow({ where: { id: bus.id } });
@@ -183,6 +182,35 @@ describe('PATCH /api/buses/:id/status', () => {
         } finally {
             await removeFailure();
         }
+    });
+
+    it('Two requests with Promise.all with different bus status', async () => {
+        const user = await createUser(prisma, { role: UserRole.ADMIN });
+        const bus = await createBus(prisma, { status: BusStatus.AVAILABLE });
+        const header = await authHeader(jwt, user);
+
+        const send = (status: BusStatus) => 
+            request(app.getHttpServer())
+                .patch(`/api/buses/${bus.id}/status`)
+                .set(header)
+                .send({
+                    ...validPayload(),
+                    status
+                });
+
+        const responses = await Promise.all([
+            send(BusStatus.MAINTENANCE),
+            send(BusStatus.ON_ROUTE),
+        ]);
+
+        expect(responses.map((r) => r.status).sort((x, y) => x - y)).toEqual([200, 409]);
+        const winner = [BusStatus.MAINTENANCE, BusStatus.ON_ROUTE][
+            responses.findIndex((r) => r.status === 200)
+        ];
+
+        const busAfter = await prisma.bus.findUniqueOrThrow({ where: { id: bus.id } });
+        expect(busAfter.status).toBe(winner);
+        expect(await prisma.busStatusHistory.count()).toEqual(1)
     });
 
     async function expectBusUnChanged(busId: number) {
