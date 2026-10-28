@@ -3,6 +3,7 @@
 A backend API for managing bus trips, ticket sales, and seat allocation.
 
 ## Features
+
 - [ ] **Authentication**
   - [x] RolesGuard and `@Roles()` decorator
   - [x] Register
@@ -10,7 +11,7 @@ A backend API for managing bus trips, ticket sales, and seat allocation.
   - [x] Refresh token
   - [x] Logout (clear cookie)
   - [x] JWT guard (attach user to request)
-   - [x] User is active
+  - [x] User is active
   - [ ] Change password
   - [ ] Forgot password
   - [ ] Reset password
@@ -36,24 +37,26 @@ A backend API for managing bus trips, ticket sales, and seat allocation.
   - [x] Update bus status
     - [x] Save change in status history
     - [x] Create maintenance when status is `MAINTENANCE`
-   - [x] **Status History**
-      - [x] Get status history (paginated)
-      - [x] Get status history by id
-   - [ ] **Seats**
-      - [ ] Create seats by busId
-      - [ ] Delete seats by id
-      - [ ] Get seats (paginated, filter by bus plate)
-   - [ ] **Maintenance**
-      - [ ] Update maintenance (cost, finishedAt)
-      - [ ] Delete maintenance (cascade delete related records)
-      - [ ] Get maintenances (paginated, filter by plate, startedAt, finishedAt, type)
+  - [x] **Status History**
+    - [x] Get status history (paginated)
+    - [x] Get status history by id
+  - [ ] **Seats**
+    - [ ] Create seats by busId
+    - [ ] Delete seats by id
+    - [ ] Get seats (paginated, filter by bus plate)
+  - [ ] **Maintenance**
+    - [ ] Update maintenance (cost, finishedAt)
+    - [ ] Delete maintenance (cascade delete related records)
+    - [ ] Get maintenances (paginated, filter by plate, startedAt, finishedAt, type)
 
 ## Tech Stack
+
 - NestJS v12
 - Node.js v24.18
 - pnpm v11.14
 
 ## Third-party Dependencies
+
 - Prisma (ORM)
 - Supabase (PostgreSQL database)
 - class-validator class-transformer
@@ -62,17 +65,22 @@ A backend API for managing bus trips, ticket sales, and seat allocation.
 - joi (validation env)
 
 ## Prerequisites
+
 - Node.js v24.18 or higher
 - pnpm v11.14 or higher
 - A Supabase account
 
 ## Installation
+
 1. Clone the repository:
+
 ```bash
    git clone https://github.com/zmkest/bus_company_api.git
 ```
+
 2. Copy `.env.template` and rename it to `.env`.
 3. Install dependencies:
+
 ```bash
    pnpm install
 ```
@@ -80,34 +88,38 @@ A backend API for managing bus trips, ticket sales, and seat allocation.
 ## Configuration
 
 ### Environment Variables
-| Variable | Description |
-|---|---|
-| `PORT` | Port where the server runs |
-| `DATABASE_URL` | PostgreSQL connection string |
-| `JWT_SECRET` | Jwt secret string |
-| `JWT_REFRESH_SECRET` | Jwt refresh secret string |
-| `JWT_PWD_SETUP_SECRET` | Jwt password setup secret string |
-| `JWT_PWD_SETUP_PURPOSE` | Jwt password setup prupose string |
-| `JWT_PWD_SETUP_ISSUER` | Jwt password setup issuer string |
+
+| Variable                 | Description                        |
+| ------------------------ | ---------------------------------- |
+| `PORT`                   | Port where the server runs         |
+| `DATABASE_URL`           | PostgreSQL connection string       |
+| `JWT_SECRET`             | Jwt secret string                  |
+| `JWT_REFRESH_SECRET`     | Jwt refresh secret string          |
+| `JWT_PWD_SETUP_SECRET`   | Jwt password setup secret string   |
+| `JWT_PWD_SETUP_PURPOSE`  | Jwt password setup prupose string  |
+| `JWT_PWD_SETUP_ISSUER`   | Jwt password setup issuer string   |
 | `JWT_PWD_SETUP_AUDIENCE` | Jwt password setup audience string |
-| `JWT_PWD_RESET_SECRET` | Jwt password reset secret string |
-| `JWT_PWD_RESET_PURPOSE` | Jwt password reset prupose string |
-| `JWT_PWD_RESET_ISSUER` | Jwt password reset issuer string |
+| `JWT_PWD_RESET_SECRET`   | Jwt password reset secret string   |
+| `JWT_PWD_RESET_PURPOSE`  | Jwt password reset prupose string  |
+| `JWT_PWD_RESET_ISSUER`   | Jwt password reset issuer string   |
 | `JWT_PWD_RESET_AUDIENCE` | Jwt password reset audience string |
-| `FRONTEND_URL` | Frontend url string |
+| `FRONTEND_URL`           | Frontend url string                |
 
 ### Supabase
+
 1. Create a new project.
 2. Save the project's database password.
 3. Copy the `DATABASE_URL` connection string and paste it into your `.env` file.
 
 ### Prisma
+
 ```bash
 pnpm prisma generate
 pnpm prisma migrate dev
 ```
 
 ## Running the App
+
 ```bash
 # development
 pnpm start
@@ -120,9 +132,11 @@ pnpm start:prod
 ```
 
 ## Testing
+
 ```bash
 pnpm test
 ```
 
 ## License
+
 MIT
