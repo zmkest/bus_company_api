@@ -41,6 +41,7 @@ export class UserService {
   }
 
   async create(createUser: TCreateUser) {
+    const { email, name, passwordHash } = createUser;
     const existing = await this.findByEmail(createUser.email);
 
     if (existing) {
@@ -50,7 +51,9 @@ export class UserService {
     try {
       const user = await this.prisma.user.create({
         data: {
-          ...createUser,
+          email,
+          name,
+          passwordHash,
           role: UserRole.PASSENGER
         },
         omit: { passwordHash: true }
@@ -65,7 +68,7 @@ export class UserService {
   }
 
   async update(id: number, updateUser: UpdateUserDto) {
-    const user = await this.findOne(id);
+    await this.findOne(id);
 
     const userUpdate = await this.prisma.user.update({
       where: { id },
