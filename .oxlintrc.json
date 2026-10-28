@@ -10,7 +10,9 @@
   "overrides": [
     {
       "files": ["**/*.spec.ts"],
-      "rules": { "typescript/unbound-method": "off" }
+      "rules": {
+        "typescript/unbound-method": "off"
+      }
     }
   ]
 }

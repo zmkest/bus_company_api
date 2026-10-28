@@ -11,9 +11,9 @@ describe('AuthService', () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         AuthService,
-        { provide: PrismaService, useValue: {}},
-        { provide: UserService, useValue: {}},
-        { provide: JwtService, useValue: {}},
+        { provide: PrismaService, useValue: {} },
+        { provide: UserService, useValue: {} },
+        { provide: JwtService, useValue: {} },
       ],
     }).compile();
 

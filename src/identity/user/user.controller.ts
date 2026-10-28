@@ -1,4 +1,15 @@
-import { Controller, Get, Body, Patch, Param, Delete, UseGuards, ParseBoolPipe, ParseIntPipe, Query } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Body,
+  Patch,
+  Param,
+  Delete,
+  UseGuards,
+  ParseBoolPipe,
+  ParseIntPipe,
+  Query,
+} from '@nestjs/common';
 import { UserService } from './user.service.js';
 import { AuthGuard } from '../auth/common/guards/auth.guard.js';
 import { RoleGuard } from '../../common/guards/role.guard.js';
@@ -9,7 +20,7 @@ import { FindUsersQueryDto } from './dto/find-users-query.dto.js';
 
 @Controller('user')
 export class UserController {
-  constructor(private readonly userService: UserService) { }
+  constructor(private readonly userService: UserService) {}
 
   @UseGuards(AuthGuard, RoleGuard)
   @Roles(UserRole.ADMIN)
@@ -23,7 +34,8 @@ export class UserController {
   @Patch(':id/active')
   updateActive(
     @Param('id', ParseIntPipe) id: number,
-    @Body('isActive', ParseBoolPipe) isActive: boolean) {
+    @Body('isActive', ParseBoolPipe) isActive: boolean,
+  ) {
     return this.userService.updateActive(id, isActive);
   }
 
@@ -59,5 +71,4 @@ export class UserController {
   delete(@Param('id', ParseIntPipe) id: number) {
     return this.userService.delete(id);
   }
-
 }

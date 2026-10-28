@@ -13,9 +13,9 @@ describe('StatusHistoryController', () => {
       controllers: [StatusHistoryController],
       providers: [
         StatusHistoryService,
-        { provide: PrismaService, useValue: {}},
-        { provide: JwtService, useValue: {}},
-        { provide: UserService, useValue: {}},
+        { provide: PrismaService, useValue: {} },
+        { provide: JwtService, useValue: {} },
+        { provide: UserService, useValue: {} },
       ],
     }).compile();
 

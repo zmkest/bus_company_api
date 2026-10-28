@@ -12,8 +12,7 @@ import { URL } from 'url';
 import { ForgotPasswordDto } from './dto/forgot-password.dto.js';
 import { ResetPasswordDto } from './dto/reset-password.dto.js';
 
-const sha256 = (text: string) =>
-  createHash('sha256').update(text).digest('hex');
+const sha256 = (text: string) => createHash('sha256').update(text).digest('hex');
 
 export interface JwtPayload {
   sub: number;
@@ -22,11 +21,10 @@ export interface JwtPayload {
 
 @Injectable()
 export class AuthService {
-
   constructor(
     private readonly user: UserService,
-    private jwtService: JwtService
-  ) { }
+    private jwtService: JwtService,
+  ) {}
 
   async signUp(createAuthDto: CreateAuthDto) {
     const { password, ...data } = createAuthDto;
@@ -35,7 +33,7 @@ export class AuthService {
 
     const user = await this.user.create({
       ...data,
-      passwordHash: hash
+      passwordHash: hash,
     });
 
     return user;
@@ -56,13 +54,13 @@ export class AuthService {
       access_token: tokens.accessToken,
       refresh_token: tokens.refreshToken,
       user: data,
-    }
+    };
   }
 
   private async generateTokens(user: { id: number; role: UserRole }) {
     const accessToken = await this.jwtService.signAsync({
       sub: user.id,
-      role: user.role
+      role: user.role,
     });
 
     const refreshToken = await this.jwtService.signAsync(
@@ -79,7 +77,7 @@ export class AuthService {
     let payload: { sub: number };
 
     try {
-      payload = await this.jwtService.verifyAsync(refreshToken, { secret: envs.jwt_refresh_token })
+      payload = await this.jwtService.verifyAsync(refreshToken, { secret: envs.jwt_refresh_token });
     } catch {
       throw new UnauthorizedException('Refresh token inválida');
     }
@@ -89,18 +87,22 @@ export class AuthService {
     if (!user?.refreshTokenHash || user.refreshTokenHash !== sha256(refreshToken)) {
       throw new UnauthorizedException('Refresh token inválida');
     }
-    const { accessToken, refreshToken: refresh_token } = await this.generateTokens({ id: user.id, role: user.role });
+    const { accessToken, refreshToken: refresh_token } = await this.generateTokens({
+      id: user.id,
+      role: user.role,
+    });
     return {
       access_token: accessToken,
-      refresh_token
-    }
+      refresh_token,
+    };
   }
 
   async logout(token: string) {
     try {
-      const payload = await this.jwtService.verifyAsync<{ sub: number }>(token,
-        { secret: envs.jwt_refresh_token, ignoreExpiration: true }
-      );
+      const payload = await this.jwtService.verifyAsync<{ sub: number }>(token, {
+        secret: envs.jwt_refresh_token,
+        ignoreExpiration: true,
+      });
       await this.user.updateRefreshToken(payload.sub, null);
     } catch {
       console.error('error al obtener el user id del token refresh');
@@ -111,7 +113,7 @@ export class AuthService {
     // Contrasenia temporal
     const passwordHash = await bcrypt.hash(randomBytes(24).toString('base64url'), 10);
 
-    const data = { 
+    const data = {
       passwordHash,
       email: createUser.email,
       role: createUser.role,
@@ -129,12 +131,9 @@ export class AuthService {
         expiresIn: '15m',
         issuer: envs.jwt_pwd_setup_issuer,
         audience: envs.jwt_pwd_setup_audience,
-      }
+      },
     );
-    const url = new URL(
-      '/change-password',
-      envs.frontend_url
-    );
+    const url = new URL('/change-password', envs.frontend_url);
     url.searchParams.set('token', token);
 
     return user;
@@ -148,12 +147,12 @@ export class AuthService {
         issuer: envs.jwt_pwd_setup_issuer,
         audience: envs.jwt_pwd_setup_audience,
       });
-
     } catch {
-      throw new BadRequestException('El enlace es inválido o ha expirado')
+      throw new BadRequestException('El enlace es inválido o ha expirado');
     }
 
-    if (payload.purpose !== envs.jwt_pwd_setup_purpose) throw new BadRequestException('El token no permite establecer una contraseña');
+    if (payload.purpose !== envs.jwt_pwd_setup_purpose)
+      throw new BadRequestException('El token no permite establecer una contraseña');
 
     const passwordHash = await bcrypt.hash(newPassword, 10);
 
@@ -180,12 +179,9 @@ export class AuthService {
         expiresIn: '15m',
         issuer: envs.jwt_pwd_reset_issuer,
         audience: envs.jwt_pwd_reset_audience,
-      }
+      },
     );
-    const url = new URL(
-      '/change-password',
-      envs.frontend_url
-    );
+    const url = new URL('/change-password', envs.frontend_url);
     url.searchParams.set('token', token);
 
     console.log(url);
@@ -205,12 +201,14 @@ export class AuthService {
         audience: envs.jwt_pwd_reset_audience,
       });
     } catch {
-      throw new BadRequestException('El token es inválido o ya caducó')
+      throw new BadRequestException('El token es inválido o ya caducó');
     }
 
-    if (payload.purpose !== envs.jwt_pwd_reset_purpose) throw new BadRequestException('El token no pemrite actualizar la contraseña');
+    if (payload.purpose !== envs.jwt_pwd_reset_purpose)
+      throw new BadRequestException('El token no pemrite actualizar la contraseña');
 
-    if (newPassword !== repitNewPassword) throw new BadRequestException('Las contraseñas no coinciden');
+    if (newPassword !== repitNewPassword)
+      throw new BadRequestException('Las contraseñas no coinciden');
 
     const newPasswordHash = await bcrypt.hash(newPassword, 10);
     await this.user.findOne(payload.sub);

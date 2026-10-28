@@ -10,7 +10,12 @@ export interface PaginatedResponse<T> {
   };
 }
 
-export function paginate<T>(items: T[], total: number, page: number, limit: number): PaginatedResponse<T> {
+export function paginate<T>(
+  items: T[],
+  total: number,
+  page: number,
+  limit: number,
+): PaginatedResponse<T> {
   const totalPages = Math.max(1, Math.ceil(total / limit));
   return {
     items,

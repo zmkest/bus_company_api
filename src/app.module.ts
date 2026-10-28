@@ -11,17 +11,15 @@ import { APP_GUARD } from '@nestjs/core';
 
 @Module({
   imports: [
-    ThrottlerModule.forRoot([
-      { name: 'default', ttl: 60_000, limit: 100 }
-    ]),
-    ConfigModule.forRoot({ 
+    ThrottlerModule.forRoot([{ name: 'default', ttl: 60_000, limit: 100 }]),
+    ConfigModule.forRoot({
       isGlobal: true,
-      envFilePath: process.env.NODE_ENV === 'test' ? '.env.test' : '.env'
-    }), 
-    AuthModule, 
-    PrismaModule, 
-    UserModule, 
-    BusesModule
+      envFilePath: process.env.NODE_ENV === 'test' ? '.env.test' : '.env',
+    }),
+    AuthModule,
+    PrismaModule,
+    UserModule,
+    BusesModule,
   ],
   controllers: [AppController],
   providers: [AppService, { provide: APP_GUARD, useClass: ThrottlerGuard }],

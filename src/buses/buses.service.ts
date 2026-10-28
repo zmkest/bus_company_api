@@ -1,4 +1,9 @@
-import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { CreateBusDto } from './dto/create-bus.dto.js';
 import { UpdateBusDto } from './dto/update-bus.dto.js';
 import { PrismaService } from '../prisma/prisma.service.js';
@@ -10,9 +15,7 @@ import { canTransition } from './common/rules/bus-status.rules.js';
 
 @Injectable()
 export class BusesService {
-  constructor(
-    private readonly prisma: PrismaService,
-  ) { }
+  constructor(private readonly prisma: PrismaService) {}
 
   async create(createBusDto: CreateBusDto) {
     const { plate } = createBusDto;
@@ -20,8 +23,8 @@ export class BusesService {
     await this.findByPlate(plate);
 
     return this.prisma.bus.create({
-      data: createBusDto
-    })
+      data: createBusDto,
+    });
   }
 
   async findAll(query: FindBusesQueryDto) {
@@ -32,23 +35,20 @@ export class BusesService {
         OR: [
           { plate: { contains: search, mode: 'insensitive' } },
           { model: { contains: search, mode: 'insensitive' } },
-        ]
-      })
-    }
+        ],
+      }),
+    };
 
-    const orderBy: Prisma.BusOrderByWithRelationInput[] = [
-      { [sortBy]: order },
-      { id: order },
-    ]
+    const orderBy: Prisma.BusOrderByWithRelationInput[] = [{ [sortBy]: order }, { id: order }];
 
     const [items, total] = await this.prisma.$transaction([
       this.prisma.bus.findMany({
         where,
         orderBy,
         skip: (page - 1) * limit,
-        take: limit
+        take: limit,
       }),
-      this.prisma.bus.count({ where })
+      this.prisma.bus.count({ where }),
     ]);
 
     return paginate(items, total, page, limit);
@@ -56,7 +56,7 @@ export class BusesService {
 
   async findOne(id: number) {
     const bus = await this.prisma.bus.findUnique({
-      where: { id }
+      where: { id },
     });
 
     if (!bus) throw new NotFoundException(`Bus #${id} no existe`);
@@ -128,7 +128,7 @@ export class BusesService {
           fromStatus,
           toStatus,
           changedById: userId,
-          reason
+          reason,
         },
       });
 
@@ -183,8 +183,8 @@ export class BusesService {
 
   remove(id: number) {
     return this.prisma.bus.delete({
-      where: { id }
-    })
+      where: { id },
+    });
   }
 
   count() {
@@ -193,7 +193,7 @@ export class BusesService {
 
   countStatus(status: BusStatus) {
     return this.prisma.bus.count({
-      where: { status }
-    })
+      where: { status },
+    });
   }
 }
