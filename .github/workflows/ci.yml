@@ -1,22 +1,24 @@
 name: CI
 on: [push, pull_request]
+
+env:
+  PORT: 3000
+  DATABASE_URL: postgresql://user:pass@localhost:5432/db_test
+  JWT_SECRET: jwt_secret_ci
+  JWT_REFRESH_SECRET: jwt_resfresh_secret_ci
+  JWT_PWD_SETUP_SECRET: 123465_ci
+  JWT_PWD_SETUP_PURPOSE: pwd_setup_ci
+  JWT_PWD_SETUP_ISSUER: company-api_ci
+  JWT_PWD_SETUP_AUDIENCE: pwd-setup_ci
+  JWT_PWD_RESET_SECRET: 123456_ci
+  JWT_PWD_RESET_PURPOSE: pwd_reset_ci
+  JWT_PWD_RESET_ISSUER: company-api_ci
+  JWT_PWD_RESET_AUDIENCE: pwd-reset_ci
+  FRONTEND_URL: http://localhost:4200
+
 jobs:
   quality:
     runs-on: ubuntu-latest
-    env:
-      PORT: 3000
-      DATABASE_URL: postgresql://user:pass@localhost:5432/db_test
-      JWT_SECRET: jwt_secret_ci
-      JWT_REFRESH_SECRET: jwt_resfresh_secret_ci
-      JWT_PWD_SETUP_SECRET: 123465_ci
-      JWT_PWD_SETUP_PURPOSE: pwd_setup_ci
-      JWT_PWD_SETUP_ISSUER: company-api_ci
-      JWT_PWD_SETUP_AUDIENCE: pwd-setup_ci
-      JWT_PWD_RESET_SECRET: 123456_ci
-      JWT_PWD_RESET_PURPOSE: pwd_reset_ci
-      JWT_PWD_RESET_ISSUER: company-api_ci
-      JWT_PWD_RESET_AUDIENCE: pwd-reset_ci
-      FRONTEND_URL: http://localhost:4200
     strategy:
       matrix:
         node-version: [24.x]
