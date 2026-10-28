@@ -95,10 +95,17 @@ enum MaintenanceType {
   CORRECTIVE
 }
 
+enum MaintenanceStatus {
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
 model Maintenance {
   id          Int             @id @default(autoincrement())
   busId       Int
   type        MaintenanceType
+  status      MaintenanceStatus @default(IN_PROGRESS)
   description String?
   cost        Decimal?        @db.Decimal(10, 2)
   startedAt   DateTime
