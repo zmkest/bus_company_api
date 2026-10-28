@@ -49,7 +49,7 @@ A backend API for managing bus trips, ticket sales, and seat allocation.
   - [ ] **Maintenance**
     - [ ] Update maintenance (cost, finishedAt)
     - [ ] Delete maintenance (cascade delete related records)
-    - [ ] Get maintenances (paginated, filter by plate, startedAt, finishedAt, type)
+    - [x] Get maintenances (paginated, filter by plate, startedAt, finishedAt, type)
 
 ## Tech Stack
 
