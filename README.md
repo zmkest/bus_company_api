@@ -1,5 +1,7 @@
 # Bus Company Backend
 
+![CI](https://github.com/zmkest/bus_company_api/actions/workflows/ci.yml/badge.svg)
+
 A backend API for managing bus trips, ticket sales, and seat allocation.
 
 ## Features
@@ -135,7 +137,12 @@ pnpm start:prod
 
 ```bash
 pnpm test
+pnpm test:e2e
 ```
+
+## Documentación
+
+- [Problemas resueltos](docs/tickets.md) — Practical cases and solutions
 
 ## License
 
