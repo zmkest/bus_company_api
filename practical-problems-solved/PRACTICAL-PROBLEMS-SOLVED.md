@@ -26,12 +26,12 @@ The goal is to practice the situations that separate a CRUD demo from a producti
 
 ### Status values
 
-| Status | Meaning |
-|---|---|
-| `Open` | Not started |
+| Status        | Meaning                       |
+| ------------- | ----------------------------- |
+| `Open`        | Not started                   |
 | `In progress` | Branch created, work underway |
-| `In review` | PR opened, waiting for review |
-| `Done` | Merged, resolution documented |
+| `In review`   | PR opened, waiting for review |
+| `Done`        | Merged, resolution documented |
 
 ### Definition of done (applies to every ticket)
 
@@ -45,9 +45,9 @@ The goal is to practice the situations that separate a CRUD demo from a producti
 
 ## Ticket index
 
-| ID | Title | Area | Severity | Week | Status | PR |
-|---|---|---|---|---|---|---|
-| [TICKET-001](#ticket-001-inconsistent-bus-status-under-concurrent-updates) | Inconsistent bus status under concurrent updates | Buses, Auth | High | 1 | In progress | n/a |
+| ID                                                                         | Title                                            | Area        | Severity | Week | Status      | PR  |
+| -------------------------------------------------------------------------- | ------------------------------------------------ | ----------- | -------- | ---- | ----------- | --- |
+| [TICKET-001](#ticket-001-inconsistent-bus-status-under-concurrent-updates) | Inconsistent bus status under concurrent updates | Buses, Auth | High     | 1    | In progress | n/a |
 
 ---
 
@@ -58,33 +58,40 @@ Copy this block to add a new ticket, and add a row to the index.
 ```markdown
 ## TICKET-XXX: Short descriptive title
 
-| Field | Value |
-|---|---|
-| Area | e.g. Trips, Tickets, Crew |
-| Severity | Low / Medium / High / Critical |
-| Type | Bug / Feature / Security / Performance |
-| Week | N |
-| Status | Open |
+| Field    | Value                                  |
+| -------- | -------------------------------------- |
+| Area     | e.g. Trips, Tickets, Crew              |
+| Severity | Low / Medium / High / Critical         |
+| Type     | Bug / Feature / Security / Performance |
+| Week     | N                                      |
+| Status   | Open                                   |
 
 ### Support report
+
 > Quote from the (fictional) user or support agent describing the symptom.
 
 ### Context
+
 Why this matters for the business.
 
 ### Requirements
+
 1. ...
 
 ### Acceptance criteria
+
 - [ ] ...
 
 ### Hints
+
 - ...
 
 ### Bonus
+
 - ...
 
 ### Resolution
+
 **Approach:**
 **Trade-offs considered:**
 **Tests added:**
@@ -96,13 +103,13 @@ Why this matters for the business.
 
 ## TICKET-001: Inconsistent bus status under concurrent updates
 
-| Field | Value |
-|---|---|
-| Area | Buses, Auth |
-| Severity | High |
-| Type | Bug and Security |
-| Week | 1 |
-| Status | Done |
+| Field    | Value            |
+| -------- | ---------------- |
+| Area     | Buses, Auth      |
+| Severity | High             |
+| Type     | Bug and Security |
+| Week     | 1                |
+| Status   | Done             |
 
 ### Support report
 
@@ -123,14 +130,15 @@ Implement `PATCH /buses/:id/status` with body `{ "status": "...", "reason": "...
 1. **Authorization:** only `ADMIN` and `OPERATOR` can use it.
 2. **Valid transitions only:**
 
-   | From | Allowed targets |
-   |---|---|
-   | `AVAILABLE` | `ON_ROUTE`, `MAINTENANCE`, `OUT_OF_SERVICE` |
-   | `ON_ROUTE` | `AVAILABLE` |
-   | `MAINTENANCE` | `AVAILABLE`, `OUT_OF_SERVICE` |
-   | `OUT_OF_SERVICE` | `AVAILABLE`, `MAINTENANCE` |
+   | From             | Allowed targets                             |
+   | ---------------- | ------------------------------------------- |
+   | `AVAILABLE`      | `ON_ROUTE`, `MAINTENANCE`, `OUT_OF_SERVICE` |
+   | `ON_ROUTE`       | `AVAILABLE`                                 |
+   | `MAINTENANCE`    | `AVAILABLE`, `OUT_OF_SERVICE`               |
+   | `OUT_OF_SERVICE` | `AVAILABLE`, `MAINTENANCE`                  |
 
    Any other transition returns `409 Conflict` with a clear message.
+
 3. **`reason` is required** when the target is `MAINTENANCE` or `OUT_OF_SERVICE` (`400` otherwise).
 4. **Atomic history:** every successful change updates the bus **and** creates a `BusStatusHistory` row (`fromStatus`, `toStatus`, `changedById` taken from the JWT). Either both are saved or neither.
 5. **Concurrency:** if two simultaneous requests start from the same status, only one wins. The other receives `409`, and the history must never show a transition that did not actually happen.
@@ -165,6 +173,7 @@ Write these with Jest and Supertest.
 ### Resolution
 
 **Approach:**
+
 - Transition rules live in a pure function `canTransition(from, to)` backed by
   `BUS_STATUS_TRANSITIONS` (`bus-status.rules.ts`). The service maps a rejected
   transition to `409 Conflict`.
@@ -181,12 +190,14 @@ Write these with Jest and Supertest.
 - `CurrentUserId` fails closed: a missing or invalid user id returns `401`.
 
 **Requirement changes:**
+
 - Added `OUT_OF_SERVICE → AVAILABLE` (a bus can be out of service for reasons
   that don't need maintenance, such as fines or driver issues).
 - Changing to `MAINTENANCE` also opens a `Maintenance` record (`type`, `startedAt`).
   Scope added beyond the original ticket.
 
 **Decisions:**
+
 - Same-status transitions (e.g. `AVAILABLE → AVAILABLE`) return `409`.
 - DTO validation runs before the service: `ON_ROUTE → MAINTENANCE` without
   `reason` returns `400`, not `409`.
@@ -195,6 +206,7 @@ Write these with Jest and Supertest.
   deactivation and role changes apply immediately. Cost: one query per request.
 
 **Findings during the work:**
+
 - `@Type(() => Date)` accepted `'1102'` as a valid date (year 1102). Fixed.
 - `reason` is enforced only at the DTO boundary; a mutation test showed the
   service accepts a missing reason without the `ValidationPipe`. Accepted for
@@ -205,6 +217,7 @@ Write these with Jest and Supertest.
 - The trigger to force an error survives if it is not deleted within a `finally`, which does not work within a `catch`.
 
 **Tests added:**
+
 - Unit: all 50 status transition combinations (no database).
 - Unit: `BusesService` happy path, not found, invalid transition, lost race.
 - Unit: `UpdateBusStatusDto` validation rules.
@@ -216,6 +229,7 @@ Write these with Jest and Supertest.
 - E2E: Multiple requests and only one will win while the others only return 409.
 
 **What I learned:**
+
 - A passing test isn't proof: mutation testing exposed tests that passed for the
   wrong reason.
 - Prisma queries without `await` never run.
