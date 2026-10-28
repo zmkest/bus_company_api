@@ -17,6 +17,9 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Prisma generate
+        run: pnpm prisma generate --config prisma7.config.ts
+
       - name: Check formatting
         run: pnpm format:check
 
