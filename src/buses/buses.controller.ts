@@ -1,4 +1,16 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards, Query, ParseIntPipe, ParseEnumPipe } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Patch,
+  Param,
+  Delete,
+  UseGuards,
+  Query,
+  ParseIntPipe,
+  ParseEnumPipe,
+} from '@nestjs/common';
 import { BusesService } from './buses.service.js';
 import { CreateBusDto } from './dto/create-bus.dto.js';
 import { UpdateBusDto } from './dto/update-bus.dto.js';
@@ -38,10 +50,7 @@ export class BusesController {
   @UseGuards(AuthGuard, RoleGuard)
   @Roles(UserRole.ADMIN, UserRole.OPERATOR)
   @Patch(':id')
-  update(
-    @Param('id', ParseIntPipe) id: number, 
-    @Body() updateBusDto: UpdateBusDto,
-  ) {
+  update(@Param('id', ParseIntPipe) id: number, @Body() updateBusDto: UpdateBusDto) {
     return this.busesService.update(id, updateBusDto);
   }
 
@@ -49,7 +58,7 @@ export class BusesController {
   @Roles(UserRole.ADMIN, UserRole.OPERATOR)
   @Patch(':id/status')
   updateAndStatusHistory(
-    @Param('id', ParseIntPipe) id: number, 
+    @Param('id', ParseIntPipe) id: number,
     @Body() updateBusDto: UpdateBusStatusDto,
     @CurrentUserId() userId: number,
   ) {

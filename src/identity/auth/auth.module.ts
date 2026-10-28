@@ -7,7 +7,8 @@ import { JwtModule } from '@nestjs/jwt';
 import { envs } from '../../config/envs.js';
 
 @Module({
-  imports: [PrismaModule,
+  imports: [
+    PrismaModule,
     JwtModule.register({
       global: true,
       secret: envs.jwt_secret,

@@ -13,9 +13,9 @@ describe('AuthController', () => {
       controllers: [AuthController],
       providers: [
         AuthService,
-        { provide: PrismaService, useValue: {}},
-        { provide: JwtService, useValue: {}},
-        { provide: UserService, useValue: {}},
+        { provide: PrismaService, useValue: {} },
+        { provide: JwtService, useValue: {} },
+        { provide: UserService, useValue: {} },
       ],
     }).compile();
 

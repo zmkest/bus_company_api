@@ -21,22 +21,22 @@ describe('BusesService', () => {
     maintenance: {
       findFirst: vi.fn(),
       create: vi.fn(),
-    }
+    },
   };
 
   const busData = {
-    id: 1, plate: 'ASD-123', model: 'Ford',
-    year: 2015, odometerKm: 15000, status: BusStatus.AVAILABLE
+    id: 1,
+    plate: 'ASD-123',
+    model: 'Ford',
+    year: 2015,
+    odometerKm: 15000,
+    status: BusStatus.AVAILABLE,
   };
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
-      providers: [
-        BusesService,
-        { provide: PrismaService, useValue: prismaMock },
-      ]
-    })
-      .compile();
+      providers: [BusesService, { provide: PrismaService, useValue: prismaMock }],
+    }).compile();
 
     prismaMock.$transaction.mockImplementation((cb) => cb(prismaMock));
     service = module.get<BusesService>(BusesService);
@@ -52,11 +52,12 @@ describe('BusesService', () => {
     it('El findunique devuelve NotFoundException', async () => {
       prismaMock.bus.findUnique.mockResolvedValue(null);
 
-      await expect(service.updateStatusAndHistory(busData.id, { status: BusStatus.AVAILABLE }, userId ))
-        .rejects.toThrow(NotFoundException);
+      await expect(
+        service.updateStatusAndHistory(busData.id, { status: BusStatus.AVAILABLE }, userId),
+      ).rejects.toThrow(NotFoundException);
 
       expect(prismaMock.bus.findUnique).toHaveBeenCalledWith({
-        where: { id: busData.id }
+        where: { id: busData.id },
       });
       expect(prismaMock.maintenance.findFirst).not.toHaveBeenCalled();
       expect(prismaMock.bus.updateMany).not.toHaveBeenCalled();
@@ -65,10 +66,10 @@ describe('BusesService', () => {
     });
 
     it('Prueba exitosa', async () => {
-      const busUpdate = { 
+      const busUpdate = {
         status: BusStatus.MAINTENANCE,
         type: MaintenanceType.PREVENTIVE,
-        startedAt: new Date()
+        startedAt: new Date(),
       };
       const busResolved = { ...busData, status: busUpdate.status };
 
@@ -77,14 +78,15 @@ describe('BusesService', () => {
 
       prismaMock.bus.updateMany.mockResolvedValue({ count: 1 });
       prismaMock.busStatusHistory.create.mockResolvedValue({});
-      prismaMock.bus.findUniqueOrThrow.mockResolvedValue(busResolved)
+      prismaMock.bus.findUniqueOrThrow.mockResolvedValue(busResolved);
 
-      await expect(service.updateStatusAndHistory(busData.id, busUpdate, userId))
-        .resolves.toEqual(busResolved);
+      await expect(service.updateStatusAndHistory(busData.id, busUpdate, userId)).resolves.toEqual(
+        busResolved,
+      );
 
       expect(prismaMock.bus.updateMany).toHaveBeenCalledWith({
         where: { id: busData.id, status: busData.status },
-        data: { status: busUpdate.status }
+        data: { status: busUpdate.status },
       });
 
       expect(prismaMock.busStatusHistory.create).toHaveBeenCalledWith({
@@ -93,54 +95,54 @@ describe('BusesService', () => {
           fromStatus: busData.status,
           toStatus: busUpdate.status,
           changedById: userId,
-        })
+        }),
       });
 
       expect(prismaMock.maintenance.create).toHaveBeenCalledWith({
-        data: { busId: busData.id, type: busUpdate.type, startedAt: busUpdate.startedAt}
+        data: { busId: busData.id, type: busUpdate.type, startedAt: busUpdate.startedAt },
       });
-
     });
 
     it('Perder la carrera si entran dos peticiones', async () => {
-      const busUpdateUser1 = { 
-        status: BusStatus.MAINTENANCE, 
-        reason: 'revision', 
-        type: MaintenanceType.PREVENTIVE, 
-        startedAt: new Date() 
+      const busUpdateUser1 = {
+        status: BusStatus.MAINTENANCE,
+        reason: 'revision',
+        type: MaintenanceType.PREVENTIVE,
+        startedAt: new Date(),
       };
 
       prismaMock.bus.findUnique.mockResolvedValue(busData);
       prismaMock.bus.updateMany.mockResolvedValue({ count: 0 });
 
-      await expect(service.updateStatusAndHistory(busData.id, busUpdateUser1, userId))
-        .rejects.toThrow(ConflictException);
+      await expect(
+        service.updateStatusAndHistory(busData.id, busUpdateUser1, userId),
+      ).rejects.toThrow(ConflictException);
 
       expect(prismaMock.bus.updateMany).toHaveBeenCalledWith(
         expect.objectContaining({
-          where: { id: busData.id, status: busData.status }
-        })
+          where: { id: busData.id, status: busData.status },
+        }),
       );
-      
+
       expect(prismaMock.busStatusHistory.create).not.toHaveBeenCalled();
       expect(prismaMock.maintenance.create).not.toHaveBeenCalled();
     });
 
-    it ('ON_ROUTE → MAINTENANCE return 409', async() => {
-      const { id: busId, ...data} = busData;
+    it('ON_ROUTE → MAINTENANCE return 409', async () => {
+      const { id: busId, ...data } = busData;
       const fromStatus = BusStatus.ON_ROUTE;
       const toStatus = BusStatus.MAINTENANCE;
 
       prismaMock.bus.findUnique.mockResolvedValue({ ...data, status: fromStatus });
-      
-      await expect(service.updateStatusAndHistory(busId, { status: toStatus }, userId))
-        .rejects.toThrow(ConflictException);
-      
+
+      await expect(
+        service.updateStatusAndHistory(busId, { status: toStatus }, userId),
+      ).rejects.toThrow(ConflictException);
+
       expect(prismaMock.bus.updateMany).not.toHaveBeenCalled();
-      expect(prismaMock.busStatusHistory.create).not.toHaveBeenCalled();      
-    expect(prismaMock.maintenance.findFirst).not.toHaveBeenCalled();
+      expect(prismaMock.busStatusHistory.create).not.toHaveBeenCalled();
+      expect(prismaMock.maintenance.findFirst).not.toHaveBeenCalled();
       expect(prismaMock.maintenance.create).not.toHaveBeenCalled();
     });
   });
-
 });

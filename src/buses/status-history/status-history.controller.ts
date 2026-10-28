@@ -9,7 +9,7 @@ import { FindBusStatusHistoryDto } from './dto/find-status-history.dto.js';
 @Controller('status-history')
 export class StatusHistoryController {
   constructor(private readonly statusHistoryService: StatusHistoryService) {}
-  
+
   @UseGuards(AuthGuard, RoleGuard)
   @Roles(UserRole.ADMIN, UserRole.OPERATOR)
   @Get()

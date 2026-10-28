@@ -13,18 +13,25 @@ describe('BusesController', () => {
   beforeEach(async () => {
     const module = await Test.createTestingModule({
       controllers: [BusesController],
-      providers: [{ provide: BusesService, useValue: { 
-        create: vi.fn(),
-        findAll: vi.fn(),
-        findOne: vi.fn(),
-        updateStatusAndHistory: vi.fn(),
-        remove: vi.fn(),
-        count: vi.fn(),
-        countStatus: vi.fn(),
-      } }],
+      providers: [
+        {
+          provide: BusesService,
+          useValue: {
+            create: vi.fn(),
+            findAll: vi.fn(),
+            findOne: vi.fn(),
+            updateStatusAndHistory: vi.fn(),
+            remove: vi.fn(),
+            count: vi.fn(),
+            countStatus: vi.fn(),
+          },
+        },
+      ],
     })
-      .overrideGuard(AuthGuard).useValue({ canActive: () => true })
-      .overrideGuard(RoleGuard).useValue({ canActive: () => true })
+      .overrideGuard(AuthGuard)
+      .useValue({ canActive: () => true })
+      .overrideGuard(RoleGuard)
+      .useValue({ canActive: () => true })
       .compile();
 
     controller = module.get(BusesController);
@@ -36,7 +43,7 @@ describe('BusesController', () => {
     plate: 'axs-256',
     status: BusStatus.AVAILABLE,
     year: 2015,
-    odometerKm: 8
+    odometerKm: 8,
   };
 
   const busData = {
@@ -51,21 +58,18 @@ describe('BusesController', () => {
   };
 
   it('create delega en el servicio', async () => {
-
-
-    service.create.mockResolvedValue(
-      {
-        id: 5,
-        createdAt: new Date('12-10-2000'),
-        updatedAt: new Date('12-10-2000'),
-        ...dtoCreate
-      });
+    service.create.mockResolvedValue({
+      id: 5,
+      createdAt: new Date('12-10-2000'),
+      updatedAt: new Date('12-10-2000'),
+      ...dtoCreate,
+    });
 
     await expect(controller.create(dtoCreate)).resolves.toEqual({
       id: 5,
       createdAt: new Date('12-10-2000'),
       updatedAt: new Date('12-10-2000'),
-      ...dtoCreate
+      ...dtoCreate,
     });
 
     expect(service.create).toHaveBeenLastCalledWith(dtoCreate);
@@ -75,8 +79,8 @@ describe('BusesController', () => {
     const query = {
       page: 1,
       limit: 5,
-      search: ''
-    }
+      search: '',
+    };
 
     service.findAll.mockResolvedValue({
       items: [busData],
@@ -86,11 +90,13 @@ describe('BusesController', () => {
         total: 1,
         hasNext: false,
         hasPrev: false,
-        totalPages: 1
-      }
+        totalPages: 1,
+      },
     });
 
-    await expect(controller.findAll({sortBy: 'createdAt', order: 'asc', ...query})).resolves.toEqual({
+    await expect(
+      controller.findAll({ sortBy: 'createdAt', order: 'asc', ...query }),
+    ).resolves.toEqual({
       items: [busData],
       meta: {
         limit: query.limit,
@@ -98,13 +104,15 @@ describe('BusesController', () => {
         total: 1,
         hasNext: false,
         hasPrev: false,
-        totalPages: 1
-      }
+        totalPages: 1,
+      },
     });
 
-    expect(service.findAll).toHaveBeenLastCalledWith({sortBy: 'createdAt', order: 'asc', ...query});
-
-
+    expect(service.findAll).toHaveBeenLastCalledWith({
+      sortBy: 'createdAt',
+      order: 'asc',
+      ...query,
+    });
   });
 
   it('findOne delega en el servicio', async () => {
@@ -115,16 +123,22 @@ describe('BusesController', () => {
     await expect(controller.findOne(paramId)).resolves.toEqual(busData);
 
     expect(service.findOne).toHaveBeenLastCalledWith(paramId);
-  })
+  });
 
   it('updateAndStatusHistory delega en el servicio', async () => {
     const paramId = 5;
     const userId = 5;
-    service.updateStatusAndHistory.mockResolvedValue({ ...busData, status: BusStatus.MAINTENANCE});
+    service.updateStatusAndHistory.mockResolvedValue({ ...busData, status: BusStatus.MAINTENANCE });
 
-    await expect(controller.updateAndStatusHistory(paramId, { status: BusStatus.MAINTENANCE }, userId)).resolves.toEqual({ ...busData, status: BusStatus.MAINTENANCE});
+    await expect(
+      controller.updateAndStatusHistory(paramId, { status: BusStatus.MAINTENANCE }, userId),
+    ).resolves.toEqual({ ...busData, status: BusStatus.MAINTENANCE });
 
-    expect(service.updateStatusAndHistory).toHaveBeenLastCalledWith(paramId, { status: BusStatus.MAINTENANCE }, userId);
+    expect(service.updateStatusAndHistory).toHaveBeenLastCalledWith(
+      paramId,
+      { status: BusStatus.MAINTENANCE },
+      userId,
+    );
   });
 
   it('delete delega en el servicio', async () => {
@@ -135,7 +149,7 @@ describe('BusesController', () => {
     await expect(controller.remove(paramId)).resolves.toEqual(busData);
 
     expect(service.remove).toHaveBeenLastCalledWith(paramId);
-  })
+  });
 
   it('count delega en el servicio', async () => {
     service.count.mockResolvedValue(0);
@@ -152,5 +166,4 @@ describe('BusesController', () => {
 
     expect(service.countStatus).toHaveBeenLastCalledWith(BusStatus.AVAILABLE);
   });
-
 });

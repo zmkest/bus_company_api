@@ -6,13 +6,13 @@ import { configureApp } from './config/app.config.js';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
-  
+
   app.use(cookieParser());
 
   app.enableCors({
     methods: ['GET', 'PATCH', 'POST', 'DELETE'],
     origin: envs.frontend_url,
-    credentials: true
+    credentials: true,
   });
 
   configureApp(app);

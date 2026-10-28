@@ -12,8 +12,8 @@ describe('UserController', () => {
       controllers: [UserController],
       providers: [
         UserService,
-        { provide: PrismaService, useValue: {}},
-        { provide: JwtService, useValue: {}},
+        { provide: PrismaService, useValue: {} },
+        { provide: JwtService, useValue: {} },
       ],
     }).compile();
 

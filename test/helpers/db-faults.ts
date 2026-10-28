@@ -1,4 +1,4 @@
-import { PrismaService } from "../../src/prisma/prisma.service.js";
+import { PrismaService } from '../../src/prisma/prisma.service.js';
 
 const NAME = 'forced_insert_failure';
 
@@ -9,7 +9,7 @@ const NAME = 'forced_insert_failure';
  * fileParallelism: false
  */
 export async function installInsertFailture(prisma: PrismaService, table: string) {
-    await prisma.$executeRawUnsafe(`
+  await prisma.$executeRawUnsafe(`
         CREATE OR REPLACE FUNCTION ${NAME}() RETURNS trigger AS $$
         BEGIN
             RAISE EXCEPTION 'forced failure for rollback test';
@@ -17,13 +17,13 @@ export async function installInsertFailture(prisma: PrismaService, table: string
         $$ LANGUAGE plpgsql
     `);
 
-    await prisma.$executeRawUnsafe(`DROP TRIGGER IF EXISTS ${NAME} ON "${table}"`);
-    await prisma.$executeRawUnsafe(`
+  await prisma.$executeRawUnsafe(`DROP TRIGGER IF EXISTS ${NAME} ON "${table}"`);
+  await prisma.$executeRawUnsafe(`
         CREATE TRIGGER ${NAME} BEFORE INSERT ON "${table}"
         FOR EACH ROW EXECUTE FUNCTION ${NAME}()
     `);
 
-    return async () => {
-        await prisma.$executeRawUnsafe(`DROP TRIGGER IF EXISTS ${NAME} ON "${table}"`);
-    };
+  return async () => {
+    await prisma.$executeRawUnsafe(`DROP TRIGGER IF EXISTS ${NAME} ON "${table}"`);
+  };
 }

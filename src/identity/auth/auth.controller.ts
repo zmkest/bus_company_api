@@ -1,4 +1,14 @@
-import { Controller, Post, Body, UseGuards, Res, Req, HttpCode, HttpStatus, UnauthorizedException } from '@nestjs/common';
+import {
+  Controller,
+  Post,
+  Body,
+  UseGuards,
+  Res,
+  Req,
+  HttpCode,
+  HttpStatus,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { AuthService } from './auth.service.js';
 import { CreateAuthDto } from './dto/create-auth.dto.js';
 import { CredentialsDto } from './dto/credential.dto.js';
@@ -17,7 +27,7 @@ const REFRESH_MAX_AGE = 7 * 24 * 60 * 60 * 1000;
 
 @Controller('auth')
 export class AuthController {
-  constructor(private readonly authService: AuthService) { }
+  constructor(private readonly authService: AuthService) {}
 
   private get cookieOptions(): CookieOptions {
     return {
@@ -44,10 +54,7 @@ export class AuthController {
   @Throttle({ default: { limit: 5, ttl: 60_000 } })
   @HttpCode(HttpStatus.OK)
   @Post('login')
-  async signIn(
-    @Body() credentials: CredentialsDto, 
-    @Res({ passthrough: true }) res: Response
-  ) {
+  async signIn(@Body() credentials: CredentialsDto, @Res({ passthrough: true }) res: Response) {
     const { user, access_token, refresh_token } = await this.authService.signIn(credentials);
     this.setRefreshCookie(res, refresh_token);
     return { user, access_token };
@@ -56,10 +63,7 @@ export class AuthController {
   @Throttle({ default: { limit: 20, ttl: 60_000 } })
   @HttpCode(HttpStatus.OK)
   @Post('refresh')
-  async refresh(
-    @Req() req: Request, 
-    @Res({ passthrough: true }) res: Response
-  ) {
+  async refresh(@Req() req: Request, @Res({ passthrough: true }) res: Response) {
     const token = req.cookies?.[REFRESH_COOKIE];
     if (!token) throw new UnauthorizedException('Sesión no encontrada');
 
@@ -75,10 +79,7 @@ export class AuthController {
 
   @HttpCode(HttpStatus.NO_CONTENT)
   @Post('logout')
-  async logout(
-    @Req() req: Request, 
-    @Res({ passthrough: true }) res: Response
-  ) {
+  async logout(@Req() req: Request, @Res({ passthrough: true }) res: Response) {
     const token = req.cookies?.[REFRESH_COOKIE];
     if (token) await this.authService.logout(token);
     this.clearRefreshCookie(res);
@@ -92,19 +93,14 @@ export class AuthController {
   }
 
   @Post('change-password')
-  changePasswordLink(
-    @Body('token') token: string,
-    @Body('newPassword') newPassword: string
-  ) {
+  changePasswordLink(@Body('token') token: string, @Body('newPassword') newPassword: string) {
     return this.authService.changePasswordLink(token, newPassword);
   }
 
   @Throttle({ default: { limit: 3, ttl: 60_000 } })
   @HttpCode(HttpStatus.OK)
   @Post('forgot-password')
-  forgotPassword(
-    @Body() forgotPasswordDto: ForgotPasswordDto,
-  ) {
+  forgotPassword(@Body() forgotPasswordDto: ForgotPasswordDto) {
     return this.authService.forgotPassword(forgotPasswordDto);
   }
 

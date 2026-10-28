@@ -17,8 +17,7 @@ const userSelect = {
 
 @Injectable()
 export class UserService {
-
-  constructor(private prisma: PrismaService) { }
+  constructor(private prisma: PrismaService) {}
 
   async createByAdmin(createUser: TCreateUserByAdmin) {
     const existing = await this.findByEmail(createUser.email);
@@ -30,7 +29,7 @@ export class UserService {
     try {
       return await this.prisma.user.create({
         data: createUser,
-        omit: { passwordHash: true }
+        omit: { passwordHash: true },
       });
     } catch (error) {
       if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
@@ -54,9 +53,9 @@ export class UserService {
           email,
           name,
           passwordHash,
-          role: UserRole.PASSENGER
+          role: UserRole.PASSENGER,
         },
-        omit: { passwordHash: true }
+        omit: { passwordHash: true },
       });
       return user;
     } catch (error) {
@@ -77,7 +76,6 @@ export class UserService {
     });
 
     return userUpdate;
-
   }
 
   async updateActive(id: number, isActive: boolean) {
@@ -86,7 +84,7 @@ export class UserService {
     const userUpdate = await this.prisma.user.update({
       where: { id },
       data: { isActive },
-      select: userSelect
+      select: userSelect,
     });
 
     return userUpdate;
@@ -96,14 +94,14 @@ export class UserService {
     return this.prisma.user.update({
       where: { id },
       data: {
-        refreshTokenHash
-      }
-    })
+        refreshTokenHash,
+      },
+    });
   }
 
   async findOne(id: number) {
     const user = await this.prisma.user.findUnique({
-      where: { id }
+      where: { id },
     });
 
     if (!user) throw new NotFoundException('El usuario no existe');
@@ -112,7 +110,7 @@ export class UserService {
 
   async findByEmail(email: string) {
     return await this.prisma.user.findUnique({
-      where: { email }
+      where: { email },
     });
   }
 
@@ -120,7 +118,7 @@ export class UserService {
     await this.prisma.user.update({
       where: { id },
       data: { passwordHash },
-      omit: { passwordHash: true }
+      omit: { passwordHash: true },
     });
     return 'Contraseña actualizada correctamente';
   }
@@ -128,7 +126,7 @@ export class UserService {
   async delete(id: number) {
     return await this.prisma.user.delete({
       where: { id },
-      select: userSelect
+      select: userSelect,
     });
   }
 
@@ -138,7 +136,7 @@ export class UserService {
 
   async countIsActive(isActive: boolean) {
     return await this.prisma.user.count({
-      where: { isActive }
+      where: { isActive },
     });
   }
 
@@ -149,17 +147,17 @@ export class UserService {
       ...(search && {
         OR: [
           { name: { contains: search, mode: 'insensitive' } },
-          { email: { contains: search, mode: 'insensitive' } }
-        ]
-      })
-    }
+          { email: { contains: search, mode: 'insensitive' } },
+        ],
+      }),
+    };
     const [items, total] = await this.prisma.$transaction([
       this.prisma.user.findMany({
         where,
         select: userSelect,
         orderBy: [{ [sortBy]: order }, { id: 'desc' }],
         skip: (page - 1) * limit,
-        take: limit
+        take: limit,
       }),
       this.prisma.user.count({ where }),
     ]);
