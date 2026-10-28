@@ -1,6 +1,10 @@
 node_modules/
-.next/
 dist/
 build/
 coverage/
+.windsurf
+.cursor
+.claude
+*.min.js
 pnpm-lock.yaml
+package-lock.json
