@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable, NotFoundException, UnauthorizedException } from '@nestjs/common';
+import { BadRequestException, Injectable, UnauthorizedException } from '@nestjs/common';
 import { CreateAuthDto } from './dto/create-auth.dto.js';
 import { UserService } from '../user/user.service.js';
 import * as bcrypt from 'bcrypt';
@@ -80,7 +80,7 @@ export class AuthService {
 
     try {
       payload = await this.jwtService.verifyAsync(refreshToken, { secret: envs.jwt_refresh_token })
-    } catch (error) {
+    } catch {
       throw new UnauthorizedException('Refresh token inválida');
     }
 
@@ -111,7 +111,12 @@ export class AuthService {
     // Contrasenia temporal
     const passwordHash = await bcrypt.hash(randomBytes(24).toString('base64url'), 10);
 
-    const data = { passwordHash, ...createUser };
+    const data = { 
+      passwordHash,
+      email: createUser.email,
+      role: createUser.role,
+      name: createUser.name,
+    };
     const user = await this.user.createByAdmin(data);
 
     const token = await this.jwtService.signAsync(
@@ -144,7 +149,7 @@ export class AuthService {
         audience: envs.jwt_pwd_setup_audience,
       });
 
-    } catch (error) {
+    } catch {
       throw new BadRequestException('El enlace es inválido o ha expirado')
     }
 
@@ -199,7 +204,7 @@ export class AuthService {
         issuer: envs.jwt_pwd_reset_issuer,
         audience: envs.jwt_pwd_reset_audience,
       });
-    } catch (error) {
+    } catch {
       throw new BadRequestException('El token es inválido o ya caducó')
     }
 
