@@ -6,6 +6,7 @@ jobs:
     env:
       DATABASE_URL: postgresql://user:pass@localhost:5432/db
       JWT_SECRET: jwt_secret_ci
+      JWT_REFRESH_SECRET: jwt_resfresh_secret_ci
     strategy:
       matrix:
         node-version: [24.x]
