@@ -49,6 +49,8 @@ A backend API for managing bus trips, ticket sales, and seat allocation.
   - [ ] **Maintenance**
     - [x] Add status on maintenance (IN-PROGRESS, COMPLETED, CANCELLED)
     - [ ] Update maintenance (cost, finishedAt)
+    - [ ] Update and complete maintenance (update bus, create history)
+    - [ ] Update and cancel maintenance (update bus, create history)
     - [ ] Delete maintenance (cascade delete related records)
     - [x] Get maintenances (paginated, filter by plate, startedAt, finishedAt, type)
 
