@@ -1,8 +1,15 @@
-import { Injectable } from '@nestjs/common';
+import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service.js';
 import { FindMaintenanceQueryDto } from './dto/find-maintenances-query.dto.js';
-import { MaintenanceType, Prisma } from '../../generated/prisma/client.js';
+import {
+  BusStatus,
+  Maintenance,
+  MaintenanceStatus,
+  MaintenanceType,
+  Prisma,
+} from '../../generated/prisma/client.js';
 import { paginate } from '../../common/interfaces/paginated.js';
+import { UpdateMaintenanceDto } from './dto/update-maintenance.dto.js';
 
 @Injectable()
 export class MaintenancesService {
@@ -51,5 +58,96 @@ export class MaintenancesService {
     ]);
 
     return paginate(items, total, page, limit);
+  }
+
+  async findOne(id: number, busId?: number): Promise<Maintenance> {
+    const m = await this.prisma.maintenance.findUnique({
+      where: { id, busId },
+    });
+
+    if (!m) throw new NotFoundException(`Mantenimiento con id #${id} no existe`);
+    return m;
+  }
+
+  async update(id: number, dto: UpdateMaintenanceDto) {
+    const { busId, ...data } = dto;
+
+    await this.findOne(id, busId);
+    return await this.prisma.maintenance.update({
+      data: data,
+      where: { id, busId },
+    });
+  }
+
+  async complete(id: number, userId: number, finishedAt: Date) {
+    return this.prisma.$transaction(async (tx) => {
+      const m = await tx.maintenance.findUnique({ where: { id } });
+      if (!m) throw new NotFoundException('El mantenimiento no existe');
+
+      const { count } = await tx.maintenance.updateMany({
+        data: { status: MaintenanceStatus.COMPLETED, finishedAt },
+        where: { id, status: MaintenanceStatus.IN_PROGRESS },
+      });
+      if (count === 0) {
+        throw new ConflictException('EL mantenimiento no está en curso');
+      }
+
+      await tx.busStatusHistory.create({
+        data: {
+          busId: m.busId,
+          fromStatus: BusStatus.MAINTENANCE,
+          toStatus: BusStatus.AVAILABLE,
+          changedById: userId,
+          reason: 'Mantenimiento completado',
+        },
+      });
+
+      await tx.bus.update({
+        data: {
+          status: BusStatus.AVAILABLE,
+        },
+        where: { id: m.busId },
+      });
+    });
+  }
+
+  async cancel(id: number, userId: number) {
+    return await this.prisma.$transaction(async (tx) => {
+      const m = await tx.maintenance.findUnique({ where: { id } });
+      if (!m) throw new NotFoundException('El mantenimiento no existe');
+
+      const { count } = await tx.maintenance.updateMany({
+        data: { status: MaintenanceStatus.CANCELLED, finishedAt: new Date() },
+        where: { id, status: MaintenanceStatus.IN_PROGRESS },
+      });
+      if (count === 0) {
+        throw new ConflictException('EL mantenimiento no está en curso');
+      }
+
+      const origin = await tx.busStatusHistory.findFirst({
+        where: { busId: m.busId, toStatus: BusStatus.MAINTENANCE },
+        orderBy: { createdAt: 'desc' },
+      });
+      if (!origin) {
+        throw new NotFoundException('No se encontró el estado previo del bus');
+      }
+
+      await tx.busStatusHistory.create({
+        data: {
+          busId: m.busId,
+          fromStatus: BusStatus.MAINTENANCE,
+          toStatus: origin.fromStatus,
+          changedById: userId,
+          reason: 'Mantenimiento cancelado',
+        },
+      });
+
+      await tx.bus.update({
+        data: {
+          status: origin.fromStatus,
+        },
+        where: { id: m.busId },
+      });
+    });
   }
 }

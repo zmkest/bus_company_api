@@ -11,11 +11,7 @@ import {
   ValidateIf,
 } from 'class-validator';
 import { BusStatus, MaintenanceType } from '../../generated/prisma/enums.js';
-
-const toUpper = ({ value }: { value: unknown }) =>
-  typeof value === 'string' ? value.trim().toUpperCase() : value;
-
-const trim = ({ value }: { value: unknown }) => (typeof value === 'string' ? value.trim() : value);
+import { toUpper, trim } from '../common/utils/string.util.js';
 
 export class UpdateBusStatusDto {
   @Transform(toUpper)
