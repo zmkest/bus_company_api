@@ -1,0 +1,174 @@
+## Features
+
+- [ ] **Authentication**
+  - [x] RolesGuard and `@Roles()` decorator
+  - [x] Register
+  - [x] Login with JWT (refresh token in HTTP-only cookie)
+  - [x] Refresh token
+  - [x] Logout (clear cookie)
+  - [x] JWT guard (attach user to request)
+  - [x] User is active
+  - [ ] Change password
+  - [ ] Forgot password
+  - [ ] Reset password
+  - [ ] Get current user profile (`/auth/me`)
+  - [ ] Invalidate refresh token on logout, password change and password reset (`refreshTokenHash = null`)
+  - [ ] Rate limiting on login / forgot password (anti brute-force)
+
+- [x] **Users**
+  - [x] Create user (ADMIN)
+  - [x] Update user (ADMIN)
+  - [x] Update user status (ADMIN)
+  - [x] Get users (paginated)
+  - [x] Get user by id
+  - [x] Delete user by id
+  - [x] Count users
+  - [x] Count users by status
+
+- [ ] **Buses**
+  - [x] Create bus (ADMIN)
+  - [x] Get buses (paginated, ADMIN)
+  - [x] Get bus by id
+  - [x] Update bus by id
+  - [x] Delete bus by id
+  - [x] Count buses
+  - [x] Count buses by status
+  - [x] Update bus status
+    - [x] Save change in status history
+    - [x] Create maintenance when status is `MAINTENANCE`
+  - [ ] Get available buses (status `AVAILABLE` and no overlapping trip in a given date range)
+  - [ ] Update odometer (`odometerKm`, cannot decrease)
+  - [ ] Block deletion if bus has trips, maintenances or status history (use `OUT_OF_SERVICE` instead)
+  - [x] **Status History**
+    - [x] Get status history (paginated)
+    - [x] Get status history by id
+  - [ ] **Seats**
+    - [ ] Create seats by busId (bulk: total seats, numbered 1..N)
+    - [ ] Delete seats by id (block if seat has active tickets)
+    - [ ] Get seats (paginated, filter by bus plate)
+    - [ ] Get seats by busId (seat map)
+  - [ ] **Maintenance**
+    - [x] Add status on maintenance (IN-PROGRESS, COMPLETED, CANCELLED)
+    - [x] Update maintenance (cost, finishedAt)
+    - [x] Update and complete maintenance (update bus, create history)
+    - [x] Update and cancel maintenance (update bus, create history)
+    - [ ] Delete maintenance (cascade delete related records)
+    - [x] Get maintenances (paginated, filter by plate, startedAt, finishedAt, type)
+    - [ ] Get maintenance by id
+    - [ ] Count maintenances by status / type
+    - [ ] Get maintenance cost report by bus and date range
+    - [ ] Create preventive maintenance manually (without changing bus status)
+
+- [ ] **Terminals**
+  - [ ] Create terminal (ADMIN)
+  - [ ] Get terminals (paginated, filter by city / name)
+  - [ ] Get terminal by id
+  - [ ] Update terminal by id (ADMIN)
+  - [ ] Delete terminal by id (block if used by routes)
+  - [ ] Get cities list (distinct, for search selectors)
+
+- [ ] **Routes**
+  - [ ] Create route (ADMIN, origin ≠ destination, unique pair)
+  - [ ] Get routes (paginated, filter by origin / destination city)
+  - [ ] Get route by id (includes terminals and frequencies)
+  - [ ] Update route by id (distance, duration)
+  - [ ] Delete route by id (block if it has frequencies or trips)
+  - [ ] Search routes by origin and destination city (public)
+
+- [ ] **Frequencies (schedules)**
+  - [ ] Create frequency (route, departure time, weekdays, base price)
+  - [ ] Get frequencies (paginated, filter by route, weekday, active)
+  - [ ] Get frequency by id
+  - [ ] Update frequency by id
+  - [ ] Activate / deactivate frequency
+  - [ ] Delete frequency by id (trips keep history, `frequencyId` → null)
+  - [ ] Validate no duplicated frequency (same route, time and weekdays)
+
+- [ ] **Trips**
+  - [ ] Create trip manually (route, bus, departure, price)
+  - [ ] Generate trips from frequencies (date range, skips existing: `frequencyId + scheduledDeparture`)
+  - [ ] Get trips (paginated, filter by route, bus plate, status, date range)
+  - [ ] Search available trips (public: origin, destination, date, seats left)
+  - [ ] Get trip by id (includes route, bus, crew, seats left)
+  - [ ] Update trip (reschedule, change bus or price) only if `SCHEDULED`
+  - [ ] Validate bus availability (status `AVAILABLE` and no overlapping trips, considering route duration)
+  - [ ] Start trip (`IN_PROGRESS`, set `actualDeparture`, bus → `ON_ROUTE`, save history)
+  - [ ] Complete trip (`COMPLETED`, set `actualArrival`, bus → `AVAILABLE`, update `odometerKm` with route distance)
+  - [ ] Cancel trip (`CANCELLED`, cancel tickets, refund payments, free bus)
+  - [ ] Get seat map of a trip (seat number + status: free / reserved / sold)
+  - [ ] Get passenger manifest of a trip (boarding list, DRIVER / OPERATOR)
+  - [ ] Count trips by status
+  - [ ] Get my assigned trips (DRIVER)
+
+- [ ] **Crew**
+  - [ ] Create crew member (document, name, position, license; optional link to user)
+  - [ ] Get crew members (paginated, filter by position, status, name / document)
+  - [ ] Get crew member by id
+  - [ ] Update crew member by id
+  - [ ] Update crew member status (`ACTIVE`, `INACTIVE`, `SUSPENDED`)
+  - [ ] Delete crew member by id (block if assigned to trips)
+  - [ ] Validate license for `DRIVER` (number required and not expired)
+  - [ ] Get crew members with licenses expiring soon (alert, e.g. 30 days)
+  - [ ] Get available crew members for a date range
+  - [ ] **Trip crew assignment**
+    - [ ] Assign crew to trip (at least 1 `DRIVER`, only `ACTIVE`, no overlapping trips)
+    - [ ] Remove crew from trip (only if trip is `SCHEDULED`)
+    - [ ] Get crew of a trip
+    - [ ] Get trip history by crew member
+
+- [ ] **Passengers**
+  - [ ] Create passenger (document, name, email, phone)
+  - [ ] Find or create passenger by document (used on ticket sale)
+  - [ ] Get passengers (paginated, filter by name / document)
+  - [ ] Get passenger by id
+  - [ ] Update passenger by id
+  - [ ] Delete passenger by id (block if has tickets)
+  - [ ] Get passenger travel history (tickets)
+  - [ ] Get my profile and my tickets (PASSENGER)
+
+- [ ] **Tickets**
+  - [ ] Reserve seat (status `RESERVED`, set `expiresAt`; trip must be `SCHEDULED`)
+  - [ ] Sell ticket directly (counter, SELLER: ticket `PAID` + payment `COMPLETED` in one transaction)
+  - [ ] Prevent double booking (no 2 active tickets for the same `tripId + seatId`, DB partial unique index)
+  - [ ] Validate seat belongs to the trip's bus
+  - [ ] Get tickets (paginated, filter by trip, passenger, status, date range)
+  - [ ] Get ticket by id / by `code`
+  - [ ] Pay reserved ticket (`RESERVED` → `PAID`)
+  - [ ] Expire unpaid reservations (scheduled job, `RESERVED` → `CANCELLED` when `expiresAt` passes)
+  - [ ] Cancel ticket (free the seat, refund if paid, per cancellation policy)
+  - [ ] Change seat or trip on a ticket (only if `RESERVED` / `PAID`)
+  - [ ] Board passenger (validate `code`, `PAID` → `BOARDED`, only if trip is `IN_PROGRESS` or about to depart)
+  - [ ] Generate ticket PDF with QR code (from `code`)
+  - [ ] Send ticket by email
+  - [ ] Count tickets by status
+  - [ ] Get tickets sold by seller (`soldById`, SELLER / ADMIN)
+
+- [ ] **Payments**
+  - [ ] Register payment for ticket (method `CASH`, `CARD`, `TRANSFER`)
+  - [ ] Validate amount matches ticket price (no overpayment)
+  - [ ] Confirm pending payment (`PENDING` → `COMPLETED`, e.g. transfer verification)
+  - [ ] Refund payment (`COMPLETED` → `REFUNDED`, cancel ticket)
+  - [ ] Get payments (paginated, filter by method, status, date range)
+  - [ ] Get payment by id
+  - [ ] Get payments by ticket
+  - [ ] Daily cash closing by seller (totals by method)
+
+- [ ] **Reports and Dashboard**
+  - [ ] Sales by date range (total, by route, by seller, by payment method)
+  - [ ] Occupancy rate by trip / route
+  - [ ] Most profitable routes
+  - [ ] Trips by status and delay (`scheduledDeparture` vs `actualDeparture`)
+  - [ ] Fleet status summary (buses by status)
+  - [ ] Maintenance cost by bus
+  - [ ] Export reports (CSV / Excel)
+
+- [ ] **Cross-cutting**
+  - [ ] Global validation (DTOs with `class-validator`) and exception filter
+  - [ ] Standard pagination, sorting and filtering helper
+  - [ ] Role permissions matrix (ADMIN, OPERATOR, SELLER, DRIVER, PASSENGER)
+  - [ ] Audit log for critical actions (sales, refunds, cancellations)
+  - [ ] Soft delete / history preservation for records with relations
+  - [ ] Swagger / OpenAPI documentation
+  - [ ] Seed script (admin user, terminals, routes, buses with seats)
+  - [ ] Unit and e2e tests for critical flows (sell ticket, cancel trip)
+  - [ ] Health check endpoint and structured logging

@@ -1,151 +1,154 @@
-# Bus Company Backend
+# Bus Company API
 
 ![CI](https://github.com/zmkest/bus_company_api/actions/workflows/ci.yml/badge.svg)
 
-A backend API for managing bus trips, ticket sales, and seat allocation.
+REST API to manage an interprovincial bus company: fleet, routes and schedules, trips, crew, ticket sales and payments.
+
+## Table of Contents
+
+- [Features](#features)
+- [Roles](#roles)
+- [Tech Stack](#tech-stack)
+- [Getting Started](#getting-started)
+- [Configuration](#configuration)
+- [Scripts](#scripts)
+- [Documentation](#documentation)
+- [License](#license)
 
 ## Features
 
-- [ ] **Authentication**
-  - [x] RolesGuard and `@Roles()` decorator
-  - [x] Register
-  - [x] Login with JWT (refresh token in HTTP-only cookie)
-  - [x] Refresh token
-  - [x] Logout (clear cookie)
-  - [x] JWT guard (attach user to request)
-  - [x] User is active
-  - [ ] Change password
-  - [ ] Forgot password
-  - [ ] Reset password
+- **Authentication and authorization**: login with JWT and refresh token in an HTTP-only cookie, role-based access control and password recovery.
+- **User management**: create, update, activate / deactivate and list users with pagination and counters.
+- **Fleet management**: register buses, track their status and odometer, and keep a full status history.
+- **Seat maps**: define the physical seats of each bus.
+- **Maintenance**: preventive and corrective maintenance linked to the bus status, with costs and history.
+- **Network**: terminals, routes between cities and recurring schedules (frequencies) with base prices.
+- **Trip planning**: automatic trip generation from schedules, bus validation and trip lifecycle (start, complete, cancel).
+- **Crew management**: drivers and assistants, license control and assignment to trips.
+- **Ticket sales**: seat reservation with expiration, counter sales, cancellation, boarding validation and ticket with QR code.
+- **Payments**: cash, card and transfer payments, confirmation and refunds.
+- **Reports**: sales, occupancy, profitable routes, fleet status and maintenance costs.
 
-- [x] **Users**
-  - [x] Create user (ADMIN)
-  - [x] Update user (ADMIN)
-  - [x] Update user status (ADMIN)
-  - [x] Get users (paginated)
-  - [x] Get user by id
-  - [x] Delete user by id
-  - [x] Count users
-  - [x] Count users by status
+> Detailed feature checklist and progress: [docs/FEATURES.md](docs/FEATURES.md)
 
-- [ ] **Buses**
-  - [x] Create bus (ADMIN)
-  - [x] Get buses (paginated, ADMIN)
-  - [x] Get bus by id
-  - [x] Update bus by id
-  - [x] Delete bus by id
-  - [x] Count buses
-  - [x] Count buses by status
-  - [x] Update bus status
-    - [x] Save change in status history
-    - [x] Create maintenance when status is `MAINTENANCE`
-  - [x] **Status History**
-    - [x] Get status history (paginated)
-    - [x] Get status history by id
-  - [ ] **Seats**
-    - [ ] Create seats by busId
-    - [ ] Delete seats by id
-    - [ ] Get seats (paginated, filter by bus plate)
-  - [ ] **Maintenance**
-    - [x] Add status on maintenance (IN-PROGRESS, COMPLETED, CANCELLED)
-    - [x] Update maintenance (cost, finishedAt)
-    - [x] Update and complete maintenance (update bus, create history)
-    - [x] Update and cancel maintenance (update bus, create history)
-    - [ ] Delete maintenance (cascade delete related records)
-    - [x] Get maintenances (paginated, filter by plate, startedAt, finishedAt, type)
+## Roles
+
+| Role        | Description                                         |
+| ----------- | --------------------------------------------------- |
+| `ADMIN`     | Full access: users, fleet, network, reports         |
+| `OPERATOR`  | Manages trips, crew assignment and fleet operations |
+| `SELLER`    | Sells and cancels tickets, registers payments       |
+| `DRIVER`    | Views assigned trips, starts and completes them     |
+| `PASSENGER` | Searches trips, buys and views own tickets          |
 
 ## Tech Stack
 
-- NestJS v12
-- Node.js v24.18
-- pnpm v11.14
+| Area       | Technology                                          |
+| ---------- | --------------------------------------------------- |
+| Framework  | NestJS + TypeScript                                 |
+| ORM        | Prisma                                              |
+| Database   | PostgreSQL (hosted on Supabase)                     |
+| Auth       | JWT (`@nestjs/jwt`), `bcrypt` for password hashing  |
+| Validation | `class-validator`, `class-transformer`, `joi` (env) |
+| Tooling    | pnpm, GitHub Actions (CI)                           |
 
-## Third-party Dependencies
+## Getting Started
 
-- Prisma (ORM)
-- Supabase (PostgreSQL database)
-- class-validator class-transformer
-- @nestjs/jwt (token)
-- bcrypt (Encript)
-- joi (validation env)
-
-## Prerequisites
+### Prerequisites
 
 - Node.js v24.18 or higher
 - pnpm v11.14 or higher
-- A Supabase account
+- A [Supabase](https://supabase.com) account
 
-## Installation
+### 1. Set up the database (Supabase)
 
-1. Clone the repository:
+1. Create a new project.
+2. Save the project's database password.
+3. Copy the connection string (`DATABASE_URL`). You will need it in step 4.
+
+### 2. Clone and install
 
 ```bash
-   git clone https://github.com/zmkest/bus_company_api.git
+git clone https://github.com/zmkest/bus_company_api.git
+cd bus_company_api
+pnpm install
 ```
 
-2. Copy `.env.template` and rename it to `.env`.
-3. Install dependencies:
+### 3. Configure environment variables
 
 ```bash
-   pnpm install
+cp .env.template .env
+```
+
+Fill in the values described in [Configuration](#configuration).
+
+### 4. Prepare the database
+
+```bash
+pnpm prisma generate
+pnpm prisma migrate dev
+
+# Optional: seed the database
+pnpm prisma db seed
+```
+
+### 5. Start the app
+
+```bash
+pnpm start:dev
 ```
 
 ## Configuration
 
 ### Environment Variables
 
-| Variable                 | Description                        |
-| ------------------------ | ---------------------------------- |
-| `PORT`                   | Port where the server runs         |
-| `DATABASE_URL`           | PostgreSQL connection string       |
-| `JWT_SECRET`             | Jwt secret string                  |
-| `JWT_REFRESH_SECRET`     | Jwt refresh secret string          |
-| `JWT_PWD_SETUP_SECRET`   | Jwt password setup secret string   |
-| `JWT_PWD_SETUP_PURPOSE`  | Jwt password setup prupose string  |
-| `JWT_PWD_SETUP_ISSUER`   | Jwt password setup issuer string   |
-| `JWT_PWD_SETUP_AUDIENCE` | Jwt password setup audience string |
-| `JWT_PWD_RESET_SECRET`   | Jwt password reset secret string   |
-| `JWT_PWD_RESET_PURPOSE`  | Jwt password reset prupose string  |
-| `JWT_PWD_RESET_ISSUER`   | Jwt password reset issuer string   |
-| `JWT_PWD_RESET_AUDIENCE` | Jwt password reset audience string |
-| `FRONTEND_URL`           | Frontend url string                |
+**General**
 
-### Supabase
+| Variable       | Description                  |
+| -------------- | ---------------------------- |
+| `PORT`         | Port where the server runs   |
+| `DATABASE_URL` | PostgreSQL connection string |
+| `FRONTEND_URL` | Frontend base URL            |
 
-1. Create a new project.
-2. Save the project's database password.
-3. Copy the `DATABASE_URL` connection string and paste it into your `.env` file.
+**Authentication tokens**
 
-### Prisma
+| Variable             | Description                   |
+| -------------------- | ----------------------------- |
+| `JWT_SECRET`         | Secret to sign access tokens  |
+| `JWT_REFRESH_SECRET` | Secret to sign refresh tokens |
 
-```bash
-pnpm prisma generate
-pnpm prisma migrate dev
-```
+**Password setup token** (first password of a user created by an admin)
 
-## Running the App
+| Variable                 | Description                 |
+| ------------------------ | --------------------------- |
+| `JWT_PWD_SETUP_SECRET`   | Secret to sign the token    |
+| `JWT_PWD_SETUP_PURPOSE`  | Purpose claim of the token  |
+| `JWT_PWD_SETUP_ISSUER`   | Issuer claim of the token   |
+| `JWT_PWD_SETUP_AUDIENCE` | Audience claim of the token |
 
-```bash
-# development
-pnpm start
+**Password reset token**
 
-# watch mode
-pnpm start:dev
+| Variable                 | Description                 |
+| ------------------------ | --------------------------- |
+| `JWT_PWD_RESET_SECRET`   | Secret to sign the token    |
+| `JWT_PWD_RESET_PURPOSE`  | Purpose claim of the token  |
+| `JWT_PWD_RESET_ISSUER`   | Issuer claim of the token   |
+| `JWT_PWD_RESET_AUDIENCE` | Audience claim of the token |
 
-# production
-pnpm start:prod
-```
+## Scripts
 
-## Testing
+| Command           | Description          |
+| ----------------- | -------------------- |
+| `pnpm start`      | Run in development   |
+| `pnpm start:dev`  | Run in watch mode    |
+| `pnpm start:prod` | Run in production    |
+| `pnpm test`       | Run unit tests       |
+| `pnpm test:e2e`   | Run end-to-end tests |
 
-```bash
-pnpm test
-pnpm test:e2e
-```
+## Documentation
 
-## Documentación
-
-- [Problemas resueltos](docs/tickets.md) — Practical cases and solutions
+- [Feature checklist](docs/FEATURES.md): progress by module
+- [Solved problems](docs/tickets.md): practical cases and solutions
 
 ## License
 
