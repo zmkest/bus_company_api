@@ -20,6 +20,7 @@ const SALT_PWD = 10;
 export interface JwtPayload {
   sub: number;
   purpose: string;
+  fp: string | undefined;
 }
 
 @Injectable()
@@ -28,7 +29,7 @@ export class AuthService {
     private readonly user: UserService,
     private jwtService: JwtService,
     private mail: MailService,
-  ) {}
+  ) { }
 
   async signUp(createAuthDto: CreateAuthDto) {
     const { password, ...data } = createAuthDto;
@@ -137,32 +138,13 @@ export class AuthService {
         audience: envs.jwt_pwd_setup_audience,
       },
     );
-    const url = new URL('/change-password', envs.frontend_url);
+    const url = new URL('/reset-password', envs.frontend_url);
     url.searchParams.set('token', token);
 
+    const html = this.mail.templateHtmlResetPwd(url.toString());
+    await this.mail.send('Restablecer contraseña', [data.email], html);
+
     return user;
-  }
-
-  async changePasswordLink(token: string, newPassword: string) {
-    let payload: JwtPayload;
-    try {
-      payload = await this.jwtService.verifyAsync(token, {
-        secret: envs.jwt_pwd_setup_secret,
-        issuer: envs.jwt_pwd_setup_issuer,
-        audience: envs.jwt_pwd_setup_audience,
-      });
-    } catch {
-      throw new BadRequestException('El enlace es inválido o ha expirado');
-    }
-
-    if (payload.purpose !== envs.jwt_pwd_setup_purpose)
-      throw new BadRequestException('El token no permite establecer una contraseña');
-
-    const passwordHash = await bcrypt.hash(newPassword, SALT_PWD);
-
-    await this.user.findOne(payload.sub);
-
-    return await this.user.changePassword(payload.sub, passwordHash);
   }
 
   async forgotPassword(forgotPasswordDto: ForgotPasswordDto) {
@@ -177,6 +159,7 @@ export class AuthService {
       {
         sub: exist.id,
         purpose: envs.jwt_pwd_reset_purpose,
+        fp: sha256(exist.passwordHash),
       },
       {
         secret: envs.jwt_pwd_reset_secret,
@@ -195,28 +178,45 @@ export class AuthService {
   }
 
   async resetPassword(resetPasswordDto: ResetPasswordDto) {
-    const { token, newPassword, repitNewPassword } = resetPasswordDto;
+    const { token, newPwd, repitNewPwd } = resetPasswordDto;
+
+    if (newPwd !== repitNewPwd) {
+      throw new BadRequestException('Las contraseñas no coinciden');
+    }
+
+    const invalidToken = () => new BadRequestException('El enlace es inválido o ya caducó');
+
     let payload: JwtPayload;
     try {
       payload = await this.jwtService.verifyAsync(token, {
         secret: envs.jwt_pwd_reset_secret,
         issuer: envs.jwt_pwd_reset_issuer,
         audience: envs.jwt_pwd_reset_audience,
+        algorithms: ['HS256'],
       });
     } catch {
-      throw new BadRequestException('El token es inválido o ya caducó');
+      throw invalidToken();
     }
 
-    if (payload.purpose !== envs.jwt_pwd_reset_purpose)
-      throw new BadRequestException('El token no pemrite actualizar la contraseña');
+    if (
+      !payload.sub ||
+      payload.purpose !== envs.jwt_pwd_reset_purpose ||
+      typeof payload.fp !== 'string'
+    ) {
+      throw invalidToken();
+    }
 
-    if (newPassword !== repitNewPassword)
-      throw new BadRequestException('Las contraseñas no coinciden');
+    const user = await this.user.findOneWithPassword(payload.sub);
 
-    const newPasswordHash = await bcrypt.hash(newPassword, SALT_PWD);
-    await this.user.findOne(payload.sub);
+    if (!user || !user.isActive || payload.fp !== sha256(user.passwordHash)) {
+      throw invalidToken();
+    }
 
-    return this.user.changePassword(payload.sub, newPasswordHash);
+    const pwdHash = await bcrypt.hash(newPwd, SALT_PWD);
+
+    await this.user.updatePasswordAndRefreshToken(payload.sub, pwdHash, null);
+
+    return { message: 'Contraseña actualizada correctamente' };
   }
 
   async changePwd(userId: number, dto: ChangePwdDto) {
@@ -236,12 +236,9 @@ export class AuthService {
     if (!isValid) throw new BadRequestException('Contraseña incorrecta');
 
     const pwdHash = await bcrypt.hash(newPwd, SALT_PWD);
-
-    await this.user.changePassword(user.id, pwdHash);
-
     const tokens = await this.generateTokens({ id: userId, role: user.role });
 
-    await this.user.updateRefreshToken(userId, tokens.refreshToken);
+    await this.user.updatePasswordAndRefreshToken(userId, pwdHash, tokens.refreshToken);
 
     return { message: 'Contraseña actualizada correctamente', ...tokens };
   }
