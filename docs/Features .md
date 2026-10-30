@@ -8,7 +8,7 @@
   - [x] Logout (clear cookie)
   - [x] JWT guard (attach user to request)
   - [x] User is active
-  - [ ] Change password
+  - [x] Change password
   - [ ] Forgot password
   - [ ] Reset password
   - [ ] Get current user profile (`/auth/me`)
