@@ -29,7 +29,7 @@ export class AuthService {
     private readonly user: UserService,
     private jwtService: JwtService,
     private mail: MailService,
-  ) { }
+  ) {}
 
   async signUp(createAuthDto: CreateAuthDto) {
     const { password, ...data } = createAuthDto;
