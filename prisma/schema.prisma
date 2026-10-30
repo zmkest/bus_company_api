@@ -186,12 +186,15 @@ model Trip {
   frequencyId        Int?
   busId              Int
   scheduledDeparture DateTime
+  scheduledArrival   DateTime
+  estimatedArrival   DateTime
   actualDeparture    DateTime?
   actualArrival      DateTime?
   price              Decimal    @db.Decimal(10, 2)
   status             TripStatus @default(SCHEDULED)
   createdAt          DateTime   @default(now())
   updatedAt          DateTime   @updatedAt
+  durationMinutes    Int
 
   route     Route      @relation(fields: [routeId], references: [id], onDelete: Restrict)
   frequency Frequency? @relation(fields: [frequencyId], references: [id], onDelete: SetNull)

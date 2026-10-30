@@ -8,10 +8,11 @@ import { CreateBusDto } from './dto/create-bus.dto.js';
 import { UpdateBusDto } from './dto/update-bus.dto.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { FindBusesQueryDto } from './dto/find-buses-query.dto.js';
-import { BusStatus, Maintenance, Prisma } from '../generated/prisma/client.js';
+import { BusStatus, Maintenance, Prisma, TripStatus } from '../generated/prisma/client.js';
 import { paginate } from '../common/interfaces/paginated.js';
 import { UpdateBusStatusDto } from './dto/update-status.dto.js';
 import { canTransition } from './common/rules/bus-status.rules.js';
+import { AvailableWithoutTripDto } from './dto/available-without-trip.dto.js';
 
 @Injectable()
 export class BusesService {
@@ -194,6 +195,23 @@ export class BusesService {
   countStatus(status: BusStatus) {
     return this.prisma.bus.count({
       where: { status },
+    });
+  }
+
+  async availableWithoutTrip(dto: AvailableWithoutTripDto) {
+    const { startDate, finishDate } = dto;
+
+    return this.prisma.bus.findMany({
+      where: {
+        status: BusStatus.AVAILABLE,
+        trips: {
+          none: {
+            status: { notIn: [TripStatus.CANCELLED, TripStatus.COMPLETED] },
+            scheduledDeparture: { lt: finishDate },
+            estimatedArrival: { gt: startDate },
+          },
+        },
+      },
     });
   }
 }
