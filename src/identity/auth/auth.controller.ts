@@ -9,6 +9,7 @@ import {
   HttpStatus,
   UnauthorizedException,
   Patch,
+  Get,
 } from '@nestjs/common';
 import { AuthService } from './auth.service.js';
 import { CreateAuthDto } from './dto/create-auth.dto.js';
@@ -121,5 +122,11 @@ export class AuthController {
   @Post('reset-password')
   resetPassword(@Body() resetPasswordDto: ResetPasswordDto) {
     return this.authService.resetPassword(resetPasswordDto);
+  }
+
+  @UseGuards(AuthGuard)
+  @Get('me')
+  currentUser(@CurrentUserId() userId: number) {
+    return this.authService.currentUser(userId);
   }
 }

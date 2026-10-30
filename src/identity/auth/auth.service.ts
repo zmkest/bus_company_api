@@ -242,4 +242,8 @@ export class AuthService {
 
     return { message: 'Contraseña actualizada correctamente', ...tokens };
   }
+
+  currentUser(userId: number) {
+    return this.user.findPublicProfile(userId);
+  }
 }

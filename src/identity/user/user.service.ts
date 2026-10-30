@@ -108,6 +108,19 @@ export class UserService {
     return user;
   }
 
+  async findPublicProfile(id: number) {
+    const user = await this.prisma.user.findUnique({
+      where: { id },
+      omit: {
+        passwordHash: true,
+        refreshTokenHash: true,
+      },
+    });
+
+    if (!user) throw new NotFoundException('El usuario no existe');
+    return user;
+  }
+
   async findOneWithPassword(id: number) {
     const user = await this.prisma.user.findUnique({
       where: { id },
