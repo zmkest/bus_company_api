@@ -8,6 +8,7 @@ import {
   HttpCode,
   HttpStatus,
   UnauthorizedException,
+  Patch,
 } from '@nestjs/common';
 import { AuthService } from './auth.service.js';
 import { CreateAuthDto } from './dto/create-auth.dto.js';
@@ -21,6 +22,8 @@ import { ForgotPasswordDto } from './dto/forgot-password.dto.js';
 import { ResetPasswordDto } from './dto/reset-password.dto.js';
 import type { CookieOptions, Request, Response } from 'express';
 import { Throttle } from '@nestjs/throttler';
+import { ChangePwdDto } from './dto/change-pwd.dto.js';
+import { CurrentUserId } from '../../common/decorators/current-user.decorator.js';
 
 const REFRESH_COOKIE = 'refresh_token';
 const REFRESH_MAX_AGE = 7 * 24 * 60 * 60 * 1000;
@@ -92,9 +95,18 @@ export class AuthController {
     return this.authService.createUserByAdmin(createUserDto);
   }
 
-  @Post('change-password')
-  changePasswordLink(@Body('token') token: string, @Body('newPassword') newPassword: string) {
-    return this.authService.changePasswordLink(token, newPassword);
+  @UseGuards(AuthGuard)
+  @Throttle({ default: { limit: 3, ttl: 60_000 } })
+  @HttpCode(HttpStatus.OK)
+  @Patch('password/change')
+  async changePwd(
+    @CurrentUserId() userId: number,
+    @Body() dto: ChangePwdDto,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    const { accessToken, refreshToken } = await this.authService.changePwd(userId, dto);
+    this.setRefreshCookie(res, refreshToken);
+    return { message: 'Contraseña actualizada correctamente', access_token: accessToken };
   }
 
   @Throttle({ default: { limit: 3, ttl: 60_000 } })
