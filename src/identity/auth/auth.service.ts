@@ -11,8 +11,10 @@ import { CreateUserByAdminDto } from './dto/create-user.dto.js';
 import { URL } from 'url';
 import { ForgotPasswordDto } from './dto/forgot-password.dto.js';
 import { ResetPasswordDto } from './dto/reset-password.dto.js';
+import { ChangePwdDto } from './dto/change-pwd.dto.js';
 
 const sha256 = (text: string) => createHash('sha256').update(text).digest('hex');
+const SALT_PWD = 10;
 
 export interface JwtPayload {
   sub: number;
@@ -29,7 +31,7 @@ export class AuthService {
   async signUp(createAuthDto: CreateAuthDto) {
     const { password, ...data } = createAuthDto;
 
-    const hash = await bcrypt.hash(password, 10);
+    const hash = await bcrypt.hash(password, SALT_PWD);
 
     const user = await this.user.create({
       ...data,
@@ -47,7 +49,7 @@ export class AuthService {
     if (!user.isActive) throw new UnauthorizedException('La cuenta no está activada');
 
     const { passwordHash, ...data } = user;
-    const comparePasswd = bcrypt.compareSync(password, passwordHash);
+    const comparePasswd = await bcrypt.compare(password, passwordHash);
     if (!comparePasswd) throw new UnauthorizedException('Credenciales invalidas');
     const tokens = await this.generateTokens(data);
     return {
@@ -111,7 +113,7 @@ export class AuthService {
 
   async createUserByAdmin(createUser: CreateUserByAdminDto) {
     // Contrasenia temporal
-    const passwordHash = await bcrypt.hash(randomBytes(24).toString('base64url'), 10);
+    const passwordHash = await bcrypt.hash(randomBytes(24).toString('base64url'), SALT_PWD);
 
     const data = {
       passwordHash,
@@ -154,7 +156,7 @@ export class AuthService {
     if (payload.purpose !== envs.jwt_pwd_setup_purpose)
       throw new BadRequestException('El token no permite establecer una contraseña');
 
-    const passwordHash = await bcrypt.hash(newPassword, 10);
+    const passwordHash = await bcrypt.hash(newPassword, SALT_PWD);
 
     await this.user.findOne(payload.sub);
 
@@ -210,9 +212,36 @@ export class AuthService {
     if (newPassword !== repitNewPassword)
       throw new BadRequestException('Las contraseñas no coinciden');
 
-    const newPasswordHash = await bcrypt.hash(newPassword, 10);
+    const newPasswordHash = await bcrypt.hash(newPassword, SALT_PWD);
     await this.user.findOne(payload.sub);
 
     return this.user.changePassword(payload.sub, newPasswordHash);
+  }
+
+  async changePwd(userId: number, dto: ChangePwdDto) {
+    const { pwd, newPwd, repitNewPwd } = dto;
+
+    if (newPwd !== repitNewPwd) {
+      throw new BadRequestException('Las contraseñas no coinciden');
+    }
+    if (pwd === newPwd) {
+      throw new BadRequestException('La nueva contraseña debe ser diferente a la actual');
+    }
+
+    const user = await this.user.findOne(userId);
+
+    const isValid = await bcrypt.compare(pwd, user.passwordHash);
+
+    if (!isValid) throw new BadRequestException('Contraseña incorrecta');
+
+    const pwdHash = await bcrypt.hash(newPwd, SALT_PWD);
+
+    await this.user.changePassword(user.id, pwdHash);
+
+    const tokens = await this.generateTokens({ id: userId, role: user.role });
+
+    await this.user.updateRefreshToken(userId, tokens.refreshToken);
+
+    return { message: 'Contraseña actualizada correctamente', ...tokens };
   }
 }
