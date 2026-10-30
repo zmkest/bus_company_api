@@ -5,6 +5,7 @@ import { PrismaModule } from '../../prisma/prisma.module.js';
 import { UserService } from '../user/user.service.js';
 import { JwtModule } from '@nestjs/jwt';
 import { envs } from '../../config/envs.js';
+import { MailService } from '../../shared/services/mail.service.js';
 
 @Module({
   imports: [
@@ -16,6 +17,6 @@ import { envs } from '../../config/envs.js';
     }),
   ],
   controllers: [AuthController],
-  providers: [AuthService, UserService],
+  providers: [AuthService, UserService, MailService],
 })
 export class AuthModule {}

@@ -15,6 +15,8 @@ interface EnvVars {
   JWT_PWD_RESET_PURPOSE: string;
   JWT_PWD_RESET_ISSUER: string;
   JWT_PWD_RESET_AUDIENCE: string;
+  RESEND_API_KEY: string;
+  RESEND_EMAIL: string;
 }
 
 const envsSchema = joi
@@ -32,6 +34,8 @@ const envsSchema = joi
     JWT_PWD_RESET_PURPOSE: joi.string().required(),
     JWT_PWD_RESET_ISSUER: joi.string().required(),
     JWT_PWD_RESET_AUDIENCE: joi.string().required(),
+    RESEND_API_KEY: joi.string().required(),
+    RESEND_EMAIL: joi.string().required(),
   })
   .unknown(true);
 
@@ -57,4 +61,6 @@ export const envs = {
   jwt_pwd_reset_purpose: envVars.JWT_PWD_RESET_PURPOSE,
   jwt_pwd_reset_issuer: envVars.JWT_PWD_RESET_ISSUER,
   jwt_pwd_reset_audience: envVars.JWT_PWD_RESET_AUDIENCE,
+  resend_api_key: envVars.RESEND_API_KEY,
+  resend_email: envVars.RESEND_EMAIL,
 };

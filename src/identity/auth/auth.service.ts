@@ -12,6 +12,7 @@ import { URL } from 'url';
 import { ForgotPasswordDto } from './dto/forgot-password.dto.js';
 import { ResetPasswordDto } from './dto/reset-password.dto.js';
 import { ChangePwdDto } from './dto/change-pwd.dto.js';
+import { MailService } from '../../shared/services/mail.service.js';
 
 const sha256 = (text: string) => createHash('sha256').update(text).digest('hex');
 const SALT_PWD = 10;
@@ -26,6 +27,7 @@ export class AuthService {
   constructor(
     private readonly user: UserService,
     private jwtService: JwtService,
+    private mail: MailService,
   ) {}
 
   async signUp(createAuthDto: CreateAuthDto) {
@@ -168,7 +170,7 @@ export class AuthService {
 
     const exist = await this.user.findByEmail(email);
     if (!exist) {
-      return 'Si la cuenta existe, recibirás un correo con instrucciones';
+      return { message: 'Si la cuenta existe, recibirás un correo con instrucciones' };
     }
 
     const token = await this.jwtService.signAsync(
@@ -183,14 +185,13 @@ export class AuthService {
         audience: envs.jwt_pwd_reset_audience,
       },
     );
-    const url = new URL('/change-password', envs.frontend_url);
+    const url = new URL('/reset-password', envs.frontend_url);
     url.searchParams.set('token', token);
 
-    console.log(url);
+    const html = this.mail.templateHtmlResetPwd(url.toString());
+    await this.mail.send('Restablecer contraseña', [email], html);
 
-    // todo: Enviar correo electronico con link para cambio de contraseña
-
-    return 'Si la cuenta existe, recibirás un correo con instrucciones';
+    return { message: 'Si la cuenta existe, recibirás un correo con instrucciones' };
   }
 
   async resetPassword(resetPasswordDto: ResetPasswordDto) {
