@@ -9,7 +9,7 @@
   - [x] JWT guard (attach user to request)
   - [x] User is active
   - [x] Change password
-  - [ ] Forgot password
+  - [x] Forgot password
   - [ ] Reset password
   - [ ] Get current user profile (`/auth/me`)
   - [ ] Invalidate refresh token on logout, password change and password reset (`refreshTokenHash = null`)
