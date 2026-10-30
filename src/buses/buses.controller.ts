@@ -21,6 +21,7 @@ import { BusStatus, UserRole } from '../generated/prisma/enums.js';
 import { FindBusesQueryDto } from './dto/find-buses-query.dto.js';
 import { CurrentUserId } from '../common/decorators/current-user.decorator.js';
 import { UpdateBusStatusDto } from './dto/update-status.dto.js';
+import { AvailableWithoutTripDto } from './dto/available-without-trip.dto.js';
 
 @Controller('buses')
 export class BusesController {
@@ -38,6 +39,13 @@ export class BusesController {
   @Get()
   findAll(@Query() query: FindBusesQueryDto) {
     return this.busesService.findAll(query);
+  }
+
+  @UseGuards(AuthGuard, RoleGuard)
+  @Roles(UserRole.ADMIN, UserRole.OPERATOR)
+  @Get('available')
+  availableWithoutTrip(@Query() dto: AvailableWithoutTripDto) {
+    return this.busesService.availableWithoutTrip(dto);
   }
 
   @UseGuards(AuthGuard, RoleGuard)
