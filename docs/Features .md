@@ -1,6 +1,6 @@
 ## Features
 
-- [ ] **Authentication**
+- [x] **Authentication**
   - [x] RolesGuard and `@Roles()` decorator
   - [x] Register
   - [x] Login with JWT (refresh token in HTTP-only cookie)
@@ -12,8 +12,8 @@
   - [x] Forgot password
   - [x] Reset password
   - [x] Get current user profile (`/auth/me`)
-  - [ ] Invalidate refresh token on logout, password change and password reset (`refreshTokenHash = null`)
-  - [ ] Rate limiting on login / forgot password (anti brute-force)
+  - [x] Invalidate refresh token on logout, password change and password reset (`refreshTokenHash = null`)
+  - [x] Rate limiting on login / forgot password (anti brute-force)
 
 - [x] **Users**
   - [x] Create user (ADMIN)
