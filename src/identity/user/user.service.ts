@@ -108,19 +108,18 @@ export class UserService {
     return user;
   }
 
+  async findOneWithPassword(id: number) {
+    const user = await this.prisma.user.findUnique({
+      where: { id },
+    });
+
+    return user;
+  }
+
   async findByEmail(email: string) {
     return await this.prisma.user.findUnique({
       where: { email },
     });
-  }
-
-  async changePassword(id: number, passwordHash: string) {
-    await this.prisma.user.update({
-      where: { id },
-      data: { passwordHash },
-      omit: { passwordHash: true },
-    });
-    return 'Contraseña actualizada correctamente';
   }
 
   async delete(id: number) {
@@ -169,6 +168,14 @@ export class UserService {
     return this.prisma.user.findFirst({
       where: { id, isActive: true },
       select: { id: true, role: true },
+    });
+  }
+
+  updatePasswordAndRefreshToken(userId: number, pwd: string, refesh_token: string | null) {
+    return this.prisma.user.update({
+      where: { id: userId },
+      data: { passwordHash: pwd, refreshTokenHash: refesh_token },
+      omit: { passwordHash: true },
     });
   }
 }

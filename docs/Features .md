@@ -10,7 +10,7 @@
   - [x] User is active
   - [x] Change password
   - [x] Forgot password
-  - [ ] Reset password
+  - [x] Reset password
   - [ ] Get current user profile (`/auth/me`)
   - [ ] Invalidate refresh token on logout, password change and password reset (`refreshTokenHash = null`)
   - [ ] Rate limiting on login / forgot password (anti brute-force)
