@@ -51,6 +51,7 @@ REST API to manage an interprovincial bus company: fleet, routes and schedules, 
 | Auth       | JWT (`@nestjs/jwt`), `bcrypt` for password hashing  |
 | Validation | `class-validator`, `class-transformer`, `joi` (env) |
 | Tooling    | pnpm, GitHub Actions (CI)                           |
+| Mail       | Resend                                              |
 
 ## Getting Started
 
@@ -134,6 +135,13 @@ pnpm start:dev
 | `JWT_PWD_RESET_PURPOSE`  | Purpose claim of the token  |
 | `JWT_PWD_RESET_ISSUER`   | Issuer claim of the token   |
 | `JWT_PWD_RESET_AUDIENCE` | Audience claim of the token |
+
+**Send mail**
+
+| Variable         | Description                |
+| ---------------- | -------------------------- |
+| `RESEND_API_KEY` | Secret resend key          |
+| `RESEND_EMAIL`   | Email with verified domain |
 
 ## Scripts
 
