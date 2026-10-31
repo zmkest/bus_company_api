@@ -189,7 +189,22 @@ export class BusesService {
     };
   }
 
-  remove(id: number) {
+  async remove(id: number) {
+    await this.findOne(id);
+
+    const [t, m, h] = await Promise.all([
+      this.prisma.trip.count({ where: { busId: id } }),
+      this.prisma.maintenance.count({ where: { busId: id } }),
+      this.prisma.busStatusHistory.count({ where: { busId: id } }),
+    ]);
+
+    if (t + m + h > 0) {
+      throw new ConflictException(
+        'No se puede eliminar: el bus tiene viajes, mantenimientos o historial. ' +
+          'Use el cambio de estado a OUT_OF_SERVICE.',
+      );
+    }
+
     return this.prisma.bus.delete({
       where: { id },
     });
