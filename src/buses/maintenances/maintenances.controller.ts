@@ -52,4 +52,11 @@ export class MaintenancesController {
   cancel(@Param('id', ParseIntPipe) id: number, @CurrentUserId() userId: number) {
     return this.maintenancesService.cancel(id, userId);
   }
+
+  @UseGuards(AuthGuard, RoleGuard)
+  @Roles(UserRole.ADMIN, UserRole.OPERATOR)
+  @Get(':id')
+  findOne(@Param('id', ParseIntPipe) id: number) {
+    return this.maintenancesService.findOne(id);
+  }
 }

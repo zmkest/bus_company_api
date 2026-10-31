@@ -54,7 +54,7 @@
     - [x] Update and cancel maintenance (update bus, create history)
     - [ ] Delete maintenance (cascade delete related records)
     - [x] Get maintenances (paginated, filter by plate, startedAt, finishedAt, type)
-    - [ ] Get maintenance by id
+    - [x] Get maintenance by id
     - [ ] Count maintenances by status / type
     - [ ] Get maintenance cost report by bus and date range
     - [ ] Create preventive maintenance manually (without changing bus status)
