@@ -13,6 +13,7 @@ import { ForgotPasswordDto } from './dto/forgot-password.dto.js';
 import { ResetPasswordDto } from './dto/reset-password.dto.js';
 import { ChangePwdDto } from './dto/change-pwd.dto.js';
 import { MailService } from '../../shared/services/mail.service.js';
+import { TOKEN_CONFIG, TokenConfig, TokenType } from './common/config/token.config.js';
 
 const sha256 = (text: string) => createHash('sha256').update(text).digest('hex');
 const SALT_PWD = 10;
@@ -245,5 +246,23 @@ export class AuthService {
 
   currentUser(userId: number) {
     return this.user.findPublicProfile(userId);
+  }
+
+  async verifyResetToken(token: string, type: TokenType) {
+    const cfg = this.getConfigToken(type);
+    try {
+      return await this.jwtService.verifyAsync(token, {
+        algorithms: ['HS256'],
+        secret: cfg.secret,
+        issuer: cfg.issuer,
+        audience: cfg.audience,
+      });
+    } catch {
+      return null;
+    }
+  }
+
+  getConfigToken(type: TokenType): TokenConfig {
+    return TOKEN_CONFIG[type];
   }
 }

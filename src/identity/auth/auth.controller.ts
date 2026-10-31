@@ -10,6 +10,7 @@ import {
   UnauthorizedException,
   Patch,
   Get,
+  BadRequestException,
 } from '@nestjs/common';
 import { AuthService } from './auth.service.js';
 import { CreateAuthDto } from './dto/create-auth.dto.js';
@@ -25,6 +26,8 @@ import type { CookieOptions, Request, Response } from 'express';
 import { Throttle } from '@nestjs/throttler';
 import { ChangePwdDto } from './dto/change-pwd.dto.js';
 import { CurrentUserId } from '../../common/decorators/current-user.decorator.js';
+import { VerifyTokenDto } from './dto/verify-token.dto.js';
+import { TokenType } from './common/config/token.config.js';
 
 const REFRESH_COOKIE = 'refresh_token';
 const REFRESH_MAX_AGE = 7 * 24 * 60 * 60 * 1000;
@@ -128,5 +131,14 @@ export class AuthController {
   @Get('me')
   currentUser(@CurrentUserId() userId: number) {
     return this.authService.currentUser(userId);
+  }
+
+  @Throttle({ default: { limit: 3, ttl: 60_000 } })
+  @HttpCode(HttpStatus.OK)
+  @Post('reset-password/verify')
+  async verifyResetToken(@Body() { token }: VerifyTokenDto) {
+    const payload = await this.authService.verifyResetToken(token, TokenType.RESET);
+    if (!payload) throw new BadRequestException('Enlace inválido o expirado');
+    return { valid: true };
   }
 }
