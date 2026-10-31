@@ -37,7 +37,7 @@
     - [x] Save change in status history
     - [x] Create maintenance when status is `MAINTENANCE`
   - [x] Get available buses (status `AVAILABLE` and no overlapping trip in a given date range)
-  - [ ] Update odometer (`odometerKm`, cannot decrease)
+  - [x] Update odometer (`odometerKm`, cannot decrease)
   - [ ] Block deletion if bus has trips, maintenances or status history (use `OUT_OF_SERVICE` instead)
   - [x] **Status History**
     - [x] Get status history (paginated)

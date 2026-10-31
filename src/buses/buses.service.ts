@@ -74,7 +74,14 @@ export class BusesService {
   }
 
   async update(id: number, updateBusDto: UpdateBusDto) {
-    await this.findOne(id);
+    const { odometerKm } = updateBusDto;
+    const bus = await this.findOne(id);
+
+    if (odometerKm !== undefined && odometerKm < bus.odometerKm) {
+      throw new BadRequestException(
+        `El odómetro actual es ${bus.odometerKm} km; no se puede registrar ${odometerKm} km (no puede retroceder)`,
+      );
+    }
 
     return this.prisma.bus.update({
       where: { id },
