@@ -1,4 +1,4 @@
-import { IsNotEmpty, IsNumber, IsString, Min } from 'class-validator';
+import { IsInt, IsNotEmpty, IsPositive, IsString, Min } from 'class-validator';
 import { IsPlate } from '../common/validators/is-placa.validator.js';
 import { Transform } from 'class-transformer';
 
@@ -12,10 +12,11 @@ export class CreateBusDto {
   @IsString()
   model: string;
 
-  @IsNumber()
+  @IsInt()
   @Min(1000)
   year: number;
 
-  @IsNumber()
+  @IsInt({ message: 'odometerKm debe ser un número entero' })
+  @IsPositive({ message: 'odometerKm debe ser mayor a 0' })
   odometerKm: number;
 }
