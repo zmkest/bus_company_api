@@ -19,6 +19,13 @@ export class StatusHistoryController {
 
   @UseGuards(AuthGuard, RoleGuard)
   @Roles(UserRole.ADMIN, UserRole.OPERATOR)
+  @Get('count/to-status')
+  countBytoStatus() {
+    return this.statusHistoryService.countBytoStatus();
+  }
+
+  @UseGuards(AuthGuard, RoleGuard)
+  @Roles(UserRole.ADMIN, UserRole.OPERATOR)
   @Get(':id')
   findOne(@Param('id', ParseIntPipe) id: number) {
     return this.statusHistoryService.findOne(id);

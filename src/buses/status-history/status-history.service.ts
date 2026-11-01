@@ -1,7 +1,7 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service.js';
 import { FindBusStatusHistoryDto } from './dto/find-status-history.dto.js';
-import { Prisma } from '../../generated/prisma/client.js';
+import { BusStatus, Prisma } from '../../generated/prisma/client.js';
 import { paginate } from '../../common/interfaces/paginated.js';
 
 @Injectable()
@@ -56,5 +56,25 @@ export class StatusHistoryService {
       return { changedByName: changedBy.name, busPlate: bus.plate, ...data };
     });
     return paginate(refactorItems, total, page, limit);
+  }
+
+  async countBytoStatus() {
+    const [total, AVAILABLE, MAINTENANCE, ON_ROUTE, OUT_OF_SERVICE] = await Promise.all([
+      this.prismaService.busStatusHistory.count(),
+      this.prismaService.busStatusHistory.count({
+        where: { toStatus: BusStatus.AVAILABLE },
+      }),
+      this.prismaService.busStatusHistory.count({
+        where: { toStatus: BusStatus.MAINTENANCE },
+      }),
+      this.prismaService.busStatusHistory.count({
+        where: { toStatus: BusStatus.ON_ROUTE },
+      }),
+      this.prismaService.busStatusHistory.count({
+        where: { toStatus: BusStatus.OUT_OF_SERVICE },
+      }),
+    ]);
+
+    return { total, AVAILABLE, MAINTENANCE, ON_ROUTE, OUT_OF_SERVICE };
   }
 }
