@@ -150,4 +150,35 @@ export class MaintenancesService {
       });
     });
   }
+
+  async countByStatus() {
+    const [total, in_progress, completed, cancelled] = await Promise.all([
+      this.prisma.maintenance.count(),
+      this.prisma.maintenance.count({
+        where: { status: MaintenanceStatus.IN_PROGRESS },
+      }),
+      this.prisma.maintenance.count({
+        where: { status: MaintenanceStatus.COMPLETED },
+      }),
+      this.prisma.maintenance.count({
+        where: { status: MaintenanceStatus.CANCELLED },
+      }),
+    ]);
+
+    return { total, IN_PROGRESS: in_progress, COMPLETED: completed, CANCELLED: cancelled };
+  }
+
+  async countByType() {
+    const [total, corrective, preventive] = await Promise.all([
+      this.prisma.maintenance.count(),
+      this.prisma.maintenance.count({
+        where: { type: MaintenanceType.CORRECTIVE },
+      }),
+      this.prisma.maintenance.count({
+        where: { type: MaintenanceType.PREVENTIVE },
+      }),
+    ]);
+
+    return { total, CORRECTIVE: corrective, PREVENTIVE: preventive };
+  }
 }

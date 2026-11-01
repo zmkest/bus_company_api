@@ -30,6 +30,20 @@ export class MaintenancesController {
 
   @UseGuards(AuthGuard, RoleGuard)
   @Roles(UserRole.ADMIN, UserRole.OPERATOR)
+  @Get('count/status')
+  countByStatus() {
+    return this.maintenancesService.countByStatus();
+  }
+
+  @UseGuards(AuthGuard, RoleGuard)
+  @Roles(UserRole.ADMIN, UserRole.OPERATOR)
+  @Get('count/type')
+  countByType() {
+    return this.maintenancesService.countByType();
+  }
+
+  @UseGuards(AuthGuard, RoleGuard)
+  @Roles(UserRole.ADMIN, UserRole.OPERATOR)
   @Patch(':id')
   update(@Param('id', ParseIntPipe) id: number, @Body() dto: UpdateMaintenanceDto) {
     return this.maintenancesService.update(id, dto);
