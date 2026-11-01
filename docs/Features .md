@@ -54,6 +54,7 @@
   - [x] **Status History**
     - [x] Get status history (paginated)
     - [x] Get status history by id
+    - [x] Count status history by toStatus
   - [ ] **Seats**
     - [ ] Create seats by busId (bulk: total seats, numbered 1..N)
     - [ ] Delete seats by id (block if seat has active tickets)
