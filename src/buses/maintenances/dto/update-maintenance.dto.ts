@@ -51,7 +51,7 @@ export class UpdateMaintenanceDto {
 
 export class CompleteMaintenanceDto {
   @Type(() => Date)
-  @IsDate({ message: 'startedAt debe ser una fecha válida (ej: 2026-10-29T08:00:00Z)' })
-  @MaxDate(() => new Date(), { message: 'startedAt no debe ser una fecha futura' })
-  startedAt: Date;
+  @IsDate({ message: 'finishedAt debe ser una fecha válida (ej: 2026-10-29T08:00:00Z)' })
+  @MaxDate(() => new Date(), { message: 'finishedAt no debe ser una fecha futura' })
+  finishedAt: Date;
 }

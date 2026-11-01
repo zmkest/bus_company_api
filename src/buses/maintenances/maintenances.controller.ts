@@ -57,7 +57,7 @@ export class MaintenancesController {
     @CurrentUserId() userId: number,
     @Body() dto: CompleteMaintenanceDto,
   ) {
-    return this.maintenancesService.complete(id, userId, dto.startedAt);
+    return this.maintenancesService.complete(id, userId, dto.finishedAt);
   }
 
   @UseGuards(AuthGuard, RoleGuard)
