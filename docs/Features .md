@@ -39,6 +39,18 @@
   - [x] Get available buses (status `AVAILABLE` and no overlapping trip in a given date range)
   - [x] Update odometer (`odometerKm`, cannot decrease)
   - [x] Block deletion if bus has trips, maintenances or status history (use `OUT_OF_SERVICE` instead)
+  - [ ] Validate maintenance dates (temporal consistency) `/buses/:id/status`
+    - [ ] Add optional `maintenanceId` FK to `BusStatusHistory` (nullable, `ON DELETE RESTRICT`)
+    - [ ] Set `maintenanceId` on history records created by start / complete / cancel
+    - [ ] Start: `startedAt` >= last `BusStatusHistory.createdAt` and <= now
+    - [ ] Start: reject if bus has trips on or after `startedAt`
+    - [ ] Complete: `startedAt` <= `finishedAt` <= now
+    - [ ] Complete: reject if bus has trips between `startedAt` and `finishedAt`
+    - [ ] Block bus status changes while a maintenance is open (only complete/cancel)
+    - [ ] Lock bus row (`pessimistic_write`) inside transaction to avoid race conditions
+    - [ ] Return 422 with clear message on violation
+    - [ ] Frontend: date pickers with `min`/`max` based on last change and today
+    - [ ] Document: history = audit log (`createdAt`), Maintenance = real dates
   - [x] **Status History**
     - [x] Get status history (paginated)
     - [x] Get status history by id
@@ -53,11 +65,16 @@
     - [x] Update and complete maintenance (update bus, create history)
     - [x] Update and cancel maintenance (update bus, create history)
     - [ ] Delete maintenance (cascade delete related records)
-    - [x] Get maintenances (paginated, filter by plate, startedAt, finishedAt, type)
+    - [ ] Get maintenances (paginated, filter by plate, startedAt, finishedAt, type), return busPlate in object
     - [x] Get maintenance by id
     - [x] Count maintenances by status / type
     - [ ] Get maintenance cost report by bus and date range
     - [ ] Create preventive maintenance manually (without changing bus status)
+    - [ ] Block updates on final maintenances (`COMPLETED` / `CANCELLED`)
+      - [ ] Reject changes to `status`, `startedAt`, `finishedAt`, `busId`, `type` (409)
+      - [ ] Allow only informative fields (`notes`, `cost`) — ADMIN only
+      - [ ] Remove `status` from generic update DTO (transitions only via complete/cancel)
+      - [ ] Complete/cancel endpoints reject already-final maintenances (409)
 
 - [ ] **Terminals**
   - [ ] Create terminal (ADMIN)
