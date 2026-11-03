@@ -83,9 +83,11 @@ model BusStatusHistory {
   changedById Int
   reason      String?
   createdAt   DateTime  @default(now())
+  maintenanceId Int?      @unique
 
   bus       Bus  @relation(fields: [busId], references: [id], onDelete: Restrict)
   changedBy User @relation(fields: [changedById], references: [id], onDelete: Restrict)
+  maintenance Maintenance? @relation(fields: [maintenanceId], references: [id], onDelete: Restrict)
 
   @@index([busId, createdAt])
 }
@@ -116,6 +118,7 @@ model Maintenance {
 
   @@index([busId, startedAt])
   @@index([busId, finishedAt])
+  busStatusHistories BusStatusHistory[]
 }
 
 // ───────────────────────── Red y horarios ─────────────────────────

@@ -39,18 +39,18 @@
   - [x] Get available buses (status `AVAILABLE` and no overlapping trip in a given date range)
   - [x] Update odometer (`odometerKm`, cannot decrease)
   - [x] Block deletion if bus has trips, maintenances or status history (use `OUT_OF_SERVICE` instead)
-  - [ ] Validate maintenance dates (temporal consistency) `/buses/:id/status`
-    - [ ] Add optional `maintenanceId` FK to `BusStatusHistory` (nullable, `ON DELETE RESTRICT`)
-    - [ ] Set `maintenanceId` on history records created by start / complete / cancel
-    - [ ] Start: `startedAt` >= last `BusStatusHistory.createdAt` and <= now
-    - [ ] Start: reject if bus has trips on or after `startedAt`
-    - [ ] Complete: `startedAt` <= `finishedAt` <= now
+  - [x] Validate maintenance dates (temporal consistency) `/buses/:id/status`
+    - [x] Add optional `maintenanceId` FK to `BusStatusHistory` (nullable, `ON DELETE RESTRICT`)
+    - [x] Set `maintenanceId` on history records created by start / complete / cancel
+    - [x] Start: `startedAt` >= last `BusStatusHistory.createdAt` and <= now
+    - [x] Start: reject if bus has trips on or after `startedAt`
+    - [x] Complete: `startedAt` <= `finishedAt` <= now
     - [ ] Complete: reject if bus has trips between `startedAt` and `finishedAt`
-    - [ ] Block bus status changes while a maintenance is open (only complete/cancel)
-    - [ ] Lock bus row (`pessimistic_write`) inside transaction to avoid race conditions
-    - [ ] Return 422 with clear message on violation
-    - [ ] Frontend: date pickers with `min`/`max` based on last change and today
-    - [ ] Document: history = audit log (`createdAt`), Maintenance = real dates
+    - [x] Block bus status changes while a maintenance is open (only complete/cancel)
+    - [x] Lock bus row (`pessimistic_write`) inside transaction to avoid race conditions
+    - [x] Return 422 with clear message on violation
+    - [x] Frontend: date pickers with `min`/`max` based on last change and today
+    - [x] Document: history = audit log (`createdAt`), Maintenance = real dates
   - [x] **Status History**
     - [x] Get status history (paginated)
     - [x] Get status history by id

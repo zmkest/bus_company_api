@@ -53,9 +53,4 @@ export class UpdateBusStatusDto {
   )
   @Min(0, { message: 'El costo no puede ser negativo' })
   cost?: number;
-
-  @IsOptional()
-  @Type(() => Date)
-  @IsDate({ message: 'finishedAt debe ser una fecha válida' })
-  finishedAt?: Date;
 }

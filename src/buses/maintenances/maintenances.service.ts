@@ -1,4 +1,9 @@
-import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  ConflictException,
+  Injectable,
+  NotFoundException,
+  UnprocessableEntityException,
+} from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service.js';
 import { FindMaintenanceQueryDto } from './dto/find-maintenances-query.dto.js';
 import {
@@ -84,6 +89,20 @@ export class MaintenancesService {
       const m = await tx.maintenance.findUnique({ where: { id } });
       if (!m) throw new NotFoundException('El mantenimiento no existe');
 
+      await tx.$queryRaw`SELECT id FROM "Bus" WHERE id = ${m.busId} FOR UPDATE`;
+
+      if (finishedAt < m.startedAt) {
+        throw new UnprocessableEntityException(
+          'La fecha de finalización no puede ser anterior a la fecha de inicio.',
+        );
+      }
+
+      if (finishedAt > new Date()) {
+        throw new UnprocessableEntityException(
+          'La fecha de finalización no puede estar en el futuro.',
+        );
+      }
+
       const { count } = await tx.maintenance.updateMany({
         data: { status: MaintenanceStatus.COMPLETED, finishedAt },
         where: { id, status: MaintenanceStatus.IN_PROGRESS },
@@ -115,6 +134,8 @@ export class MaintenancesService {
     return await this.prisma.$transaction(async (tx) => {
       const m = await tx.maintenance.findUnique({ where: { id } });
       if (!m) throw new NotFoundException('El mantenimiento no existe');
+
+      await tx.$queryRaw`SELECT id FROM "Bus" WHERE id = ${m.busId} FOR UPDATE`;
 
       const { count } = await tx.maintenance.updateMany({
         data: { status: MaintenanceStatus.CANCELLED, finishedAt: new Date() },
