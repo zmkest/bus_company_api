@@ -71,11 +71,11 @@
     - [x] Count maintenances by status / type
     - [ ] Get maintenance cost report by bus and date range
     - [ ] Create preventive maintenance manually (without changing bus status)
-    - [ ] Block updates on final maintenances (`COMPLETED` / `CANCELLED`)
-      - [ ] Reject changes to `status`, `startedAt`, `finishedAt`, `busId`, `type` (409)
-      - [ ] Allow only informative fields (`notes`, `cost`) — ADMIN only
-      - [ ] Remove `status` from generic update DTO (transitions only via complete/cancel)
-      - [ ] Complete/cancel endpoints reject already-final maintenances (409)
+    - [x] Block updates on final maintenances (`COMPLETED` / `CANCELLED`)
+      - [x] Reject changes to `status`, `startedAt`, `finishedAt`, `busId`, `type` (409)
+      - [x] Allow only informative fields (`notes`, `cost`) — ADMIN only
+      - [x] Remove `status` from generic update DTO (transitions only via complete/cancel)
+      - [x] Complete/cancel endpoints reject already-final maintenances (409)
 
 - [ ] **Terminals**
   - [ ] Create terminal (ADMIN)

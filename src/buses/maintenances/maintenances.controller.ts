@@ -16,6 +16,7 @@ import { UserRole } from '../../generated/prisma/enums.js';
 import { Roles } from '../../common/decorators/roles-user.decorator.js';
 import { CompleteMaintenanceDto, UpdateMaintenanceDto } from './dto/update-maintenance.dto.js';
 import { CurrentUserId } from '../../common/decorators/current-user.decorator.js';
+import { CurrentUserRole } from '../../common/decorators/current-user-role.decorator.js';
 
 @Controller('maintenances')
 export class MaintenancesController {
@@ -45,8 +46,12 @@ export class MaintenancesController {
   @UseGuards(AuthGuard, RoleGuard)
   @Roles(UserRole.ADMIN, UserRole.OPERATOR)
   @Patch(':id')
-  update(@Param('id', ParseIntPipe) id: number, @Body() dto: UpdateMaintenanceDto) {
-    return this.maintenancesService.update(id, dto);
+  update(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: UpdateMaintenanceDto,
+    @CurrentUserRole() role: UserRole,
+  ) {
+    return this.maintenancesService.update(id, dto, role);
   }
 
   @UseGuards(AuthGuard, RoleGuard)
