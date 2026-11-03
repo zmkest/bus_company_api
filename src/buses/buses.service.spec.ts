@@ -8,6 +8,7 @@ describe('BusesService', () => {
   let service: BusesService;
 
   const prismaMock = {
+    $queryRaw: vi.fn().mockResolvedValue([{ id: 1 }]),
     bus: {
       findUnique: vi.fn(),
       update: vi.fn(),
@@ -17,10 +18,14 @@ describe('BusesService', () => {
     $transaction: vi.fn(),
     busStatusHistory: {
       create: vi.fn(),
+      findFirst: vi.fn(),
     },
     maintenance: {
       findFirst: vi.fn(),
       create: vi.fn(),
+    },
+    trip: {
+      count: vi.fn().mockResolvedValue(0),
     },
   };
 
@@ -75,7 +80,7 @@ describe('BusesService', () => {
 
       prismaMock.bus.findUnique.mockResolvedValue(busData);
       prismaMock.maintenance.findFirst.mockResolvedValue(null);
-
+      prismaMock.maintenance.create.mockResolvedValue({ id: 1 });
       prismaMock.bus.updateMany.mockResolvedValue({ count: 1 });
       prismaMock.busStatusHistory.create.mockResolvedValue({});
       prismaMock.bus.findUniqueOrThrow.mockResolvedValue(busResolved);
