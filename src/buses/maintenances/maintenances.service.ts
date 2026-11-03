@@ -58,11 +58,19 @@ export class MaintenancesService {
         orderBy,
         skip: (page - 1) * limit,
         take: limit,
+        include: {
+          bus: { select: { id: true, plate: true } },
+        },
       }),
       this.prisma.maintenance.count({ where }),
     ]);
 
-    return paginate(items, total, page, limit);
+    const itemsWithPlate = items.map((i) => {
+      const { bus, ...rest } = i;
+      return { ...rest, busPlate: bus?.plate ?? null };
+    });
+
+    return paginate(itemsWithPlate, total, page, limit);
   }
 
   async findOne(id: number, busId?: number): Promise<Maintenance> {
