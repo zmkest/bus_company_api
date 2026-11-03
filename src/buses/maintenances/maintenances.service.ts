@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   ConflictException,
   Injectable,
   NotFoundException,
@@ -12,6 +13,7 @@ import {
   MaintenanceStatus,
   MaintenanceType,
   Prisma,
+  UserRole,
 } from '../../generated/prisma/client.js';
 import { paginate } from '../../common/interfaces/paginated.js';
 import { UpdateMaintenanceDto } from './dto/update-maintenance.dto.js';
@@ -82,12 +84,40 @@ export class MaintenancesService {
     return m;
   }
 
-  async update(id: number, dto: UpdateMaintenanceDto) {
+  async update(id: number, dto: UpdateMaintenanceDto, role: UserRole) {
     const { busId, ...data } = dto;
 
-    await this.findOne(id, busId);
+    const m = await this.findOne(id, busId);
+    const isInProgress = m.status === MaintenanceStatus.IN_PROGRESS;
+
+    if (isInProgress) {
+      return this.prisma.maintenance.update({
+        data,
+        where: { id, busId },
+      });
+    }
+
+    if (role !== UserRole.ADMIN) {
+      throw new ConflictException('El mantenimiento no está en curso');
+    }
+
+    const INFORMATIVE_FIELDS = ['description', 'cost'] as const;
+
+    const informativeData = Object.fromEntries(
+      INFORMATIVE_FIELDS.filter((field) => data[field] !== undefined).map((field) => [
+        field,
+        data[field],
+      ]),
+    );
+
+    if (Object.keys(informativeData).length === 0) {
+      throw new BadRequestException(
+        'Solo se pueden modificar descripción y cost en un mantenimiento finalizado',
+      );
+    }
+
     return await this.prisma.maintenance.update({
-      data: data,
+      data: informativeData,
       where: { id, busId },
     });
   }
