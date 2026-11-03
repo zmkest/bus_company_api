@@ -8,7 +8,7 @@ import { CreateBusDto } from './dto/create-bus.dto.js';
 import { UpdateBusDto } from './dto/update-bus.dto.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { FindBusesQueryDto } from './dto/find-buses-query.dto.js';
-import { BusStatus, Maintenance, Prisma, TripStatus } from '../generated/prisma/client.js';
+import { BusStatus, Prisma, TripStatus } from '../generated/prisma/client.js';
 import { paginate } from '../common/interfaces/paginated.js';
 import { UpdateBusStatusDto } from './dto/update-status.dto.js';
 import { canTransition } from './common/rules/bus-status.rules.js';
@@ -91,10 +91,11 @@ export class BusesService {
 
   async updateStatusAndHistory(id: number, dto: UpdateBusStatusDto, userId: number) {
     const { status: toStatus, reason } = dto;
-
     return this.prisma.$transaction(async (tx) => {
       const bus = await tx.bus.findUnique({ where: { id } });
       if (!bus) throw new NotFoundException('El bus no existe');
+
+      await tx.$queryRaw`SELECT id FROM "Bus" WHERE id = ${id} FOR UPDATE`;
 
       const fromStatus = bus.status;
 
@@ -114,12 +115,16 @@ export class BusesService {
       if (entering && openMaintenance) {
         throw new ConflictException('El bus ya tiene un mantenimiento abierto');
       }
-      if (leaving && !openMaintenance) {
-        throw new ConflictException('No hay un mantenimiento abierto para cerrar');
+      if (leaving) {
+        throw new ConflictException(
+          'No es posible cambiar el estado del bus cuando tiene un mantenimiento abierto',
+        );
       }
 
-      const openData = entering ? this.buildOpenData(dto) : null;
-      const closeData = leaving ? this.buildCloseData(dto, openMaintenance!) : null;
+      const lastHistory = await this.lastHistory(tx, id);
+
+      const openData = entering ? this.buildOpenData(dto, lastHistory?.createdAt) : null;
+      let maintenanceId: number | undefined = undefined;
 
       const { count } = await tx.bus.updateMany({
         where: { id, status: fromStatus },
@@ -130,6 +135,19 @@ export class BusesService {
         throw new ConflictException('El estado del bus cambió, intenta de nuevo');
       }
 
+      if (openData) {
+        const tripFrom = await this.hasTripsFrom(tx, id, openData.startedAt);
+
+        if (tripFrom > 0) {
+          throw new ConflictException(
+            'No se puede abrir un mantenimiento: el bus tiene viajes programados desde la fecha de inicio del mantenimiento',
+          );
+        }
+
+        const m = await tx.maintenance.create({ data: { busId: id, ...openData } });
+        maintenanceId = m.id;
+      }
+
       await tx.busStatusHistory.create({
         data: {
           busId: id,
@@ -137,15 +155,9 @@ export class BusesService {
           toStatus,
           changedById: userId,
           reason,
+          maintenanceId,
         },
       });
-
-      if (openData) {
-        await tx.maintenance.create({ data: { busId: id, ...openData } });
-      }
-      if (closeData) {
-        await tx.maintenance.update({ where: { id: openMaintenance!.id }, data: closeData });
-      }
 
       return tx.bus.findUniqueOrThrow({ where: { id } });
     });
@@ -155,7 +167,24 @@ export class BusesService {
     return tx.maintenance.findFirst({ where: { busId, finishedAt: null } });
   }
 
-  private buildOpenData(dto: UpdateBusStatusDto) {
+  private lastHistory(tx: Prisma.TransactionClient, busId: number) {
+    return tx.busStatusHistory.findFirst({
+      where: { busId },
+      orderBy: { createdAt: 'desc' },
+    });
+  }
+
+  private hasTripsFrom(tx: Prisma.TransactionClient, busId: number, startedAt: Date) {
+    return tx.trip.count({
+      where: {
+        busId,
+        status: { notIn: [TripStatus.CANCELLED, TripStatus.COMPLETED] },
+        OR: [{ scheduledDeparture: { gte: startedAt } }, { status: TripStatus.IN_PROGRESS }],
+      },
+    });
+  }
+
+  private buildOpenData(dto: UpdateBusStatusDto, createdAt?: Date) {
     const { type, startedAt, description } = dto;
 
     if (!type || !startedAt) {
@@ -166,27 +195,11 @@ export class BusesService {
       throw new BadRequestException('La fecha de inicio no puede ser futura');
     }
 
+    if (createdAt && startedAt < createdAt) {
+      throw new BadRequestException('La fecha de inicio no puede ser anterior al cambio de estado');
+    }
+
     return { type, startedAt, description };
-  }
-
-  private buildCloseData(dto: UpdateBusStatusDto, open: Maintenance) {
-    const { cost, finishedAt, description } = dto;
-
-    if (cost === undefined || !finishedAt) {
-      throw new BadRequestException('Para salir de mantenimiento indica costo y fecha de fin');
-    }
-    if (finishedAt < open.startedAt) {
-      throw new BadRequestException('La fecha de fin no puede ser anterior al inicio');
-    }
-    if (finishedAt > new Date()) {
-      throw new BadRequestException('La fecha de fin no puede ser futura');
-    }
-
-    return {
-      cost,
-      finishedAt,
-      description: description ?? open.description,
-    };
   }
 
   async remove(id: number) {
