@@ -57,7 +57,8 @@
     - [x] Count status history by toStatus
   - [ ] **Seats**
     - [x] Create seats by busId (bulk: total seats, numbered 1..N)
-    - [ ] Delete seats by id (block if seat has active tickets)
+    - [x] Delete seats by id (block if seat has active tickets)
+    - [ ] Update seat if it is operational
     - [ ] Get seats (paginated, filter by bus plate)
     - [ ] Get seats by busId (seat map)
   - [ ] **Maintenance**

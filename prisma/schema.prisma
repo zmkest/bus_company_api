@@ -68,7 +68,7 @@ model Seat {
   id     Int @id @default(autoincrement())
   busId  Int
   number Int
-
+  isOperational Boolean @default(true)
   bus     Bus      @relation(fields: [busId], references: [id], onDelete: Cascade)
   tickets Ticket[]
 

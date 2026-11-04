@@ -70,6 +70,25 @@ export class SeatsService {
     }
   }
 
+  async trimSeats(busId: number, keep: number) {
+    await this.ensureBusExists(this.prisma, busId);
+    try {
+      return await this.prisma.$transaction(async (tx) => {
+        const { count } = await tx.seat.deleteMany({
+          where: { busId, number: { gt: keep } },
+        });
+        return { busId, deleted: count };
+      });
+    } catch (error) {
+      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2003') {
+        throw new ConflictException(
+          `No se puede reducir el bus #${busId} a ${keep} asientos: algunos ya tienen tickets`,
+        );
+      }
+      throw error;
+    }
+  }
+
   private async ensureBusExists(tx: Prisma.TransactionClient, busId: number) {
     const bus = await tx.bus.findUnique({
       where: { id: busId },
