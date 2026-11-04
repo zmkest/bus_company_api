@@ -21,7 +21,7 @@ import { QueryDateRangeDto } from '../../common/dtos/query-date-range.dto.js';
 
 @Controller('maintenances')
 export class MaintenancesController {
-  constructor(private readonly maintenancesService: MaintenancesService) { }
+  constructor(private readonly maintenancesService: MaintenancesService) {}
 
   @UseGuards(AuthGuard, RoleGuard)
   @Roles(UserRole.ADMIN, UserRole.DRIVER, UserRole.OPERATOR)
