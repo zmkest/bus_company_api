@@ -21,7 +21,7 @@ import { QueryDateRangeDto } from '../../common/dtos/query-date-range.dto.js';
 
 @Controller('maintenances')
 export class MaintenancesController {
-  constructor(private readonly maintenancesService: MaintenancesService) {}
+  constructor(private readonly maintenancesService: MaintenancesService) { }
 
   @UseGuards(AuthGuard, RoleGuard)
   @Roles(UserRole.ADMIN, UserRole.DRIVER, UserRole.OPERATOR)
@@ -80,6 +80,8 @@ export class MaintenancesController {
     return this.maintenancesService.findOne(id);
   }
 
+  @UseGuards(AuthGuard, RoleGuard)
+  @Roles(UserRole.ADMIN, UserRole.OPERATOR)
   @Get('bus/:id/report/cost')
   getMaintenanceCostReport(
     @Param('id', ParseIntPipe) busId: number,
