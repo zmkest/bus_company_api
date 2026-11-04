@@ -60,12 +60,13 @@ export class UserController {
     return this.userService.countIsActive(isActive);
   }
 
+  @UseGuards(AuthGuard)
   @Get(':id')
   findOne(@Param('id', ParseIntPipe) id: number) {
     return this.userService.findOne(id);
   }
 
-  @UseGuards(AuthGuard)
+  @UseGuards(AuthGuard, RoleGuard)
   @Roles(UserRole.ADMIN)
   @Delete(':id')
   delete(@Param('id', ParseIntPipe) id: number) {
