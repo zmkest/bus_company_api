@@ -5,10 +5,11 @@ import { PrismaService } from '../prisma/prisma.service.js';
 import { StatusHistoryModule } from './status-history/status-history.module.js';
 import { UserService } from '../identity/user/user.service.js';
 import { MaintenancesModule } from './maintenances/maintenances.module.js';
+import { SeatsModule } from './seats/seats.module.js';
 
 @Module({
   controllers: [BusesController],
   providers: [BusesService, PrismaService, UserService],
-  imports: [StatusHistoryModule, MaintenancesModule],
+  imports: [StatusHistoryModule, MaintenancesModule, SeatsModule],
 })
 export class BusesModule {}
