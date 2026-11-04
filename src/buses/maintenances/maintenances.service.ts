@@ -240,4 +240,40 @@ export class MaintenancesService {
 
     return { total, CORRECTIVE: corrective, PREVENTIVE: preventive };
   }
+
+  async getMaintenanceCostReport(busId: number, startDate: Date, endDate: Date) {
+    const bus = await this.prisma.bus.findUnique({
+      where: { id: busId },
+      select: { id: true, plate: true },
+    });
+    if (!bus) throw new NotFoundException(`Bus con id #${busId} no existe`);
+
+    const endExclusive = new Date(endDate);
+    endExclusive.setUTCDate(endExclusive.getUTCDate() + 1);
+    const where: Prisma.MaintenanceWhereInput = {
+      busId,
+      status: MaintenanceStatus.COMPLETED,
+      finishedAt: { gte: startDate, lt: endExclusive },
+    };
+
+    const [aggregate, items] = await this.prisma.$transaction([
+      this.prisma.maintenance.aggregate({
+        where,
+        _sum: { cost: true },
+        _count: { _all: true },
+        _avg: { cost: true },
+      }),
+      this.prisma.maintenance.findMany({ where, orderBy: { finishedAt: 'asc' } }),
+    ]);
+    return {
+      bus,
+      period: { from: startDate, to: endDate },
+      summary: {
+        totalCost: aggregate._sum.cost ?? new Prisma.Decimal(0),
+        averageCost: aggregate._avg.cost ?? new Prisma.Decimal(0),
+        totalMaintenances: aggregate._count._all ?? 0,
+      },
+      items,
+    };
+  }
 }

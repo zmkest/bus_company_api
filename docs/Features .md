@@ -45,7 +45,7 @@
     - [x] Start: `startedAt` >= last `BusStatusHistory.createdAt` and <= now
     - [x] Start: reject if bus has trips on or after `startedAt`
     - [x] Complete: `startedAt` <= `finishedAt` <= now
-    - [ ] Complete: reject if bus has trips between `startedAt` and `finishedAt`
+    - ~~[ ] Complete: reject if bus has trips between `startedAt` and `finishedAt`~~
     - [x] Block bus status changes while a maintenance is open (only complete/cancel)
     - [x] Lock bus row (`pessimistic_write`) inside transaction to avoid race conditions
     - [x] Return 422 with clear message on violation
@@ -65,12 +65,12 @@
     - [x] Update maintenance (cost, finishedAt)
     - [x] Update and complete maintenance (update bus, create history)
     - [x] Update and cancel maintenance (update bus, create history)
-    - [ ] Delete maintenance (cascade delete related records)
-    - [ ] Get maintenances (paginated, filter by plate, startedAt, finishedAt, type), return busPlate in object
+    - ~~[ ] Delete maintenance (cascade delete related records)~~
+    - [x] Get maintenances (paginated, filter by plate, startedAt, finishedAt, type), return busPlate in object
     - [x] Get maintenance by id
     - [x] Count maintenances by status / type
-    - [ ] Get maintenance cost report by bus and date range
-    - [ ] Create preventive maintenance manually (without changing bus status)
+    - [x] Get maintenance cost report by bus and date range
+    - ~~[ ] Create preventive maintenance manually (without changing bus status)~~
     - [x] Block updates on final maintenances (`COMPLETED` / `CANCELLED`)
       - [x] Reject changes to `status`, `startedAt`, `finishedAt`, `busId`, `type` (409)
       - [x] Allow only informative fields (`notes`, `cost`) — ADMIN only
