@@ -17,6 +17,7 @@ import { Roles } from '../../common/decorators/roles-user.decorator.js';
 import { CompleteMaintenanceDto, UpdateMaintenanceDto } from './dto/update-maintenance.dto.js';
 import { CurrentUserId } from '../../common/decorators/current-user.decorator.js';
 import { CurrentUserRole } from '../../common/decorators/current-user-role.decorator.js';
+import { QueryDateRangeDto } from '../../common/dtos/query-date-range.dto.js';
 
 @Controller('maintenances')
 export class MaintenancesController {
@@ -77,5 +78,14 @@ export class MaintenancesController {
   @Get(':id')
   findOne(@Param('id', ParseIntPipe) id: number) {
     return this.maintenancesService.findOne(id);
+  }
+
+  @Get('bus/:id/report/cost')
+  getMaintenanceCostReport(
+    @Param('id', ParseIntPipe) busId: number,
+    @Query() query: QueryDateRangeDto,
+  ) {
+    const { startDate, endDate } = query;
+    return this.maintenancesService.getMaintenanceCostReport(busId, startDate, endDate);
   }
 }
