@@ -8,7 +8,7 @@ import { UserRole } from '../../generated/prisma/enums.js';
 
 @Controller('seats')
 export class SeatsController {
-  constructor(private readonly seatsService: SeatsService) { }
+  constructor(private readonly seatsService: SeatsService) {}
 
   @UseGuards(AuthGuard, RoleGuard)
   @Roles(UserRole.ADMIN, UserRole.OPERATOR)
