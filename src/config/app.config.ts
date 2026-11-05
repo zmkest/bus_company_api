@@ -1,10 +1,11 @@
 import { INestApplication, ValidationPipe, ValidationPipeOptions } from '@nestjs/common';
 import { HttpExceptionFilter } from '../common/exceptions/http-exception.filter.js';
+import { PrismaExceptionFilter } from '../common/exceptions/prisma-exception.filter.js';
 
 export const configureApp = (app: INestApplication) => {
   app.useGlobalPipes(new ValidationPipe(VALIDATION_OPTIONS));
 
-  app.useGlobalFilters(new HttpExceptionFilter());
+  app.useGlobalFilters(new HttpExceptionFilter(), new PrismaExceptionFilter());
   app.setGlobalPrefix('api');
 };
 
