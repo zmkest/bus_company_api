@@ -59,9 +59,9 @@
     - [x] Create seats by busId (bulk: total seats, numbered 1..N)
     - [x] Delete seats by id (block if seat has active tickets)
     - [ ] Update seat if it is operational
-    - [ ] Get seats (paginated, filter by bus plate)
-    - [ ] Get seats by busId (seat map)
-  - [ ] **Maintenance**
+    - [x] Get seats (paginated, filter by bus plate)
+    - [x] Get seats by busId (seat map)
+  - [x] **Maintenance**
     - [x] Add status on maintenance (IN-PROGRESS, COMPLETED, CANCELLED)
     - [x] Update maintenance (cost, finishedAt)
     - [x] Update and complete maintenance (update bus, create history)
