@@ -1,6 +1,8 @@
 import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service.js';
 import { Prisma } from '../../generated/prisma/client.js';
+import { FindSeatsQueryDto } from './dto/find-query.dto.js';
+import { paginate } from '../../common/interfaces/paginated.js';
 
 @Injectable()
 export class SeatsService {
@@ -87,6 +89,63 @@ export class SeatsService {
       }
       throw error;
     }
+  }
+
+  async findSeatsByBusId(busId: number) {
+    const busWithSeats = await this.prisma.bus.findUnique({
+      where: { id: busId },
+      select: {
+        id: true,
+        plate: true,
+        seats: {
+          select: {
+            id: true,
+            number: true,
+            isOperational: true,
+          },
+          orderBy: { number: 'asc' },
+        },
+      },
+    });
+    if (!busWithSeats) throw new NotFoundException(`Bus con id #${busId} no existe`);
+    return {
+      bus: { id: busWithSeats.id, plate: busWithSeats.plate },
+      seats: busWithSeats.seats,
+    };
+  }
+
+  async findAll(query: FindSeatsQueryDto) {
+    const { search, page, limit, sortBy, order } = query;
+
+    const where: Prisma.BusWhereInput = {
+      ...(search && {
+        plate: { contains: search, mode: 'insensitive' },
+      }),
+    };
+
+    const orderBy: Prisma.BusOrderByWithRelationInput[] = [{ [sortBy]: order }, { id: order }];
+
+    const [items, total] = await this.prisma.$transaction([
+      this.prisma.bus.findMany({
+        where,
+        skip: (page - 1) * limit,
+        take: limit,
+        orderBy,
+        select: {
+          id: true,
+          plate: true,
+          _count: { select: { seats: true } },
+        },
+      }),
+      this.prisma.bus.count({ where }),
+    ]);
+
+    return paginate(
+      items.map((item) => ({ ...item, _count: item._count.seats })),
+      total,
+      page,
+      limit,
+    );
   }
 
   private async ensureBusExists(tx: Prisma.TransactionClient, busId: number) {

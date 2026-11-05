@@ -1,4 +1,14 @@
-import { Body, Controller, Delete, Param, ParseIntPipe, Post, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  Param,
+  ParseIntPipe,
+  Post,
+  Query,
+  UseGuards,
+} from '@nestjs/common';
 import { SeatsService } from './seats.service.js';
 import { CreateManySeatsDto } from './dto/create-many.dto.js';
 import { AuthGuard } from '../../identity/auth/common/guards/auth.guard.js';
@@ -6,6 +16,7 @@ import { RoleGuard } from '../../common/guards/role.guard.js';
 import { Roles } from '../../common/decorators/roles-user.decorator.js';
 import { UserRole } from '../../generated/prisma/enums.js';
 import { DeleteManySeatsDto } from './dto/delete-many.dto.js';
+import { FindSeatsQueryDto } from './dto/find-query.dto.js';
 
 @Controller('seats')
 export class SeatsController {
@@ -32,5 +43,19 @@ export class SeatsController {
   trimSeats(@Param('id', ParseIntPipe) busId: number, @Body() body: DeleteManySeatsDto) {
     const { keep } = body;
     return this.seatsService.trimSeats(busId, keep);
+  }
+
+  @UseGuards(AuthGuard, RoleGuard)
+  @Roles(UserRole.ADMIN, UserRole.OPERATOR, UserRole.SELLER)
+  @Get('bus')
+  findAll(@Query() query: FindSeatsQueryDto) {
+    return this.seatsService.findAll(query);
+  }
+
+  @UseGuards(AuthGuard, RoleGuard)
+  @Roles(UserRole.ADMIN, UserRole.OPERATOR, UserRole.SELLER)
+  @Get('bus/:id')
+  getSeatsByBusId(@Param('id', ParseIntPipe) busId: number) {
+    return this.seatsService.findSeatsByBusId(busId);
   }
 }
