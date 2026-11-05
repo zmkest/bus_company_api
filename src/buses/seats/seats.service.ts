@@ -148,6 +148,21 @@ export class SeatsService {
     );
   }
 
+  async updateIsOperational(id: number, isOperational: boolean) {
+    try {
+      return await this.seats.update({
+        where: { id },
+        data: { isOperational },
+        select: { id: true, isOperational: true },
+      });
+    } catch (error) {
+      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2025') {
+        throw new NotFoundException(`Este asiento #${id} no existe`);
+      }
+      throw error;
+    }
+  }
+
   private async ensureBusExists(tx: Prisma.TransactionClient, busId: number) {
     const bus = await tx.bus.findUnique({
       where: { id: busId },

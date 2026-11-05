@@ -4,7 +4,9 @@ import {
   Delete,
   Get,
   Param,
+  ParseBoolPipe,
   ParseIntPipe,
+  Patch,
   Post,
   Query,
   UseGuards,
@@ -57,5 +59,15 @@ export class SeatsController {
   @Get('bus/:id')
   getSeatsByBusId(@Param('id', ParseIntPipe) busId: number) {
     return this.seatsService.findSeatsByBusId(busId);
+  }
+
+  @UseGuards(AuthGuard, RoleGuard)
+  @Roles(UserRole.ADMIN, UserRole.OPERATOR)
+  @Patch(':id/operational')
+  updateIsOperational(
+    @Param('id', ParseIntPipe) id: number,
+    @Body('operational', ParseBoolPipe) isOperational: boolean,
+  ) {
+    return this.seatsService.updateIsOperational(id, isOperational);
   }
 }
