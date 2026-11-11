@@ -80,7 +80,7 @@
 
 - [ ] **Terminals**
   - [x] Create terminal (ADMIN)
-  - [ ] Get terminals (paginated, filter by city / name)
+  - [x] Get terminals (paginated, filter by city / name)
   - [ ] Get terminal by id
   - [ ] Update terminal by id (ADMIN)
   - [ ] Delete terminal by id (block if used by routes)
