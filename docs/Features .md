@@ -25,7 +25,7 @@
   - [x] Count users
   - [x] Count users by status
 
-- [ ] **Buses**
+- [x] **Buses**
   - [x] Create bus (ADMIN)
   - [x] Get buses (paginated, ADMIN)
   - [x] Get bus by id
@@ -79,7 +79,7 @@
       - [x] Complete/cancel endpoints reject already-final maintenances (409)
 
 - [ ] **Terminals**
-  - [ ] Create terminal (ADMIN)
+  - [x] Create terminal (ADMIN)
   - [ ] Get terminals (paginated, filter by city / name)
   - [ ] Get terminal by id
   - [ ] Update terminal by id (ADMIN)
