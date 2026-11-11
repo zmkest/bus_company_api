@@ -8,6 +8,8 @@ import { UserModule } from './identity/user/user.module.js';
 import { BusesModule } from './buses/buses.module.js';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { APP_GUARD } from '@nestjs/core';
+import { NetworkModule } from './network/network.module.js';
+import { SeedModule } from './seed/seed.module.js';
 
 @Module({
   imports: [
@@ -20,6 +22,8 @@ import { APP_GUARD } from '@nestjs/core';
     PrismaModule,
     UserModule,
     BusesModule,
+    NetworkModule,
+    SeedModule,
   ],
   controllers: [AppController],
   providers: [AppService, { provide: APP_GUARD, useClass: ThrottlerGuard }],
