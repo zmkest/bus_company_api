@@ -65,28 +65,28 @@ model Bus {
 
 /// Mapa físico de asientos del bus. La disponibilidad se calcula por viaje (Ticket).
 model Seat {
-  id     Int @id @default(autoincrement())
-  busId  Int
-  number Int
-  isOperational Boolean @default(true)
-  bus     Bus      @relation(fields: [busId], references: [id], onDelete: Cascade)
-  tickets Ticket[]
+  id            Int      @id @default(autoincrement())
+  busId         Int
+  number        Int
+  isOperational Boolean  @default(true)
+  bus           Bus      @relation(fields: [busId], references: [id], onDelete: Cascade)
+  tickets       Ticket[]
 
   @@unique([busId, number])
 }
 
 model BusStatusHistory {
-  id          Int       @id @default(autoincrement())
-  busId       Int
-  fromStatus  BusStatus
-  toStatus    BusStatus
-  changedById Int
-  reason      String?
-  createdAt   DateTime  @default(now())
+  id            Int       @id @default(autoincrement())
+  busId         Int
+  fromStatus    BusStatus
+  toStatus      BusStatus
+  changedById   Int
+  reason        String?
+  createdAt     DateTime  @default(now())
   maintenanceId Int?      @unique
 
-  bus       Bus  @relation(fields: [busId], references: [id], onDelete: Restrict)
-  changedBy User @relation(fields: [changedById], references: [id], onDelete: Restrict)
+  bus         Bus          @relation(fields: [busId], references: [id], onDelete: Restrict)
+  changedBy   User         @relation(fields: [changedById], references: [id], onDelete: Restrict)
   maintenance Maintenance? @relation(fields: [maintenanceId], references: [id], onDelete: Restrict)
 
   @@index([busId, createdAt])
@@ -104,21 +104,21 @@ enum MaintenanceStatus {
 }
 
 model Maintenance {
-  id          Int             @id @default(autoincrement())
+  id          Int               @id @default(autoincrement())
   busId       Int
   type        MaintenanceType
   status      MaintenanceStatus @default(IN_PROGRESS)
   description String?
-  cost        Decimal?        @db.Decimal(10, 2)
+  cost        Decimal?          @db.Decimal(10, 2)
   startedAt   DateTime
   finishedAt  DateTime?
-  createdAt   DateTime        @default(now())
+  createdAt   DateTime          @default(now())
 
-  bus Bus @relation(fields: [busId], references: [id], onDelete: Restrict)
+  bus                Bus                @relation(fields: [busId], references: [id], onDelete: Restrict)
+  busStatusHistories BusStatusHistory[]
 
   @@index([busId, startedAt])
   @@index([busId, finishedAt])
-  busStatusHistories BusStatusHistory[]
 }
 
 // ───────────────────────── Red y horarios ─────────────────────────
@@ -126,13 +126,22 @@ model Maintenance {
 model Terminal {
   id      Int     @id @default(autoincrement())
   name    String
-  city    String
+  cityId  Int
   address String?
 
   departures Route[] @relation("RouteOrigin")
   arrivals   Route[] @relation("RouteDestination")
+  city       City    @relation(fields: [cityId], references: [id])
 
-  @@unique([city, name])
+  @@unique([name, cityId])
+  @@index([cityId])
+}
+
+model City {
+  id   Int    @id @default(autoincrement())
+  name String
+
+  terminal Terminal[]
 }
 
 model Route {
