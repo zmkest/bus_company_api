@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Post, Query, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Param, ParseIntPipe, Post, Query, UseGuards } from '@nestjs/common';
 import { TerminalsService } from './terminals.service.js';
 import { CreateTerminalDto } from './dto/create-terminal.dto.js';
 import { AuthGuard } from '../../identity/auth/common/guards/auth.guard.js';
@@ -23,5 +23,12 @@ export class TerminalsController {
   @Get()
   finAll(@Query() query: FindTerminalQueryDto) {
     return this.terminalsService.findAll(query);
+  }
+
+  @UseGuards(AuthGuard, RoleGuard)
+  @Roles(UserRole.ADMIN, UserRole.OPERATOR)
+  @Get(':id')
+  findOne(@Param('id', ParseIntPipe) id: number) {
+    return this.terminalsService.findOne(id);
   }
 }
