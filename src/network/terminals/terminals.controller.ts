@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   Param,
   ParseIntPipe,
@@ -48,5 +49,12 @@ export class TerminalsController {
   @Patch(':id')
   update(@Param('id', ParseIntPipe) id: number, @Body() dto: UpdateTerminalDto) {
     return this.terminalsService.update(id, dto);
+  }
+
+  @UseGuards(AuthGuard, RoleGuard)
+  @Roles(UserRole.ADMIN)
+  @Delete(':id')
+  remove(@Param('id', ParseIntPipe) id: number) {
+    return this.terminalsService.remove(id);
   }
 }

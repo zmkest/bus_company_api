@@ -86,6 +86,30 @@ export class TerminalsService {
     }
   }
 
+  async remove(id: number) {
+    await this.findOne(id);
+
+    const routes = await this.prisma.route.count({
+      where: { OR: [{ originId: id }, { destinationId: id }] },
+    });
+
+    if (routes > 0) {
+      throw new ConflictException(
+        `No se puede eliminar: el terminal está asociado a ${routes} ruta(s)`,
+      );
+    }
+
+    try {
+      return await this.prisma.terminal.delete({ where: { id } });
+    } catch (error) {
+      // A route may have been linked between the check and the delete (FK Restrict)
+      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2003') {
+        throw new ConflictException('No se puede eliminar: el terminal está asociado a rutas');
+      }
+      throw error;
+    }
+  }
+
   private handleWriteError(
     error: unknown,
     name: string,
