@@ -11,6 +11,7 @@ import { CreateTerminalDto } from './dto/create-terminal.dto.js';
 import { Prisma } from '../../generated/prisma/client.js';
 import { paginate } from '../../common/interfaces/paginated.js';
 import { FindTerminalQueryDto } from './dto/find-terminal-query.dto.js';
+import { UpdateTerminalDto } from './dto/update-terminal.dto.js';
 
 @Injectable()
 export class TerminalsService {
@@ -25,17 +26,7 @@ export class TerminalsService {
         include: { city: true },
       });
     } catch (error) {
-      if (error instanceof Prisma.PrismaClientKnownRequestError) {
-        switch (error.code) {
-          case 'P2003':
-            throw new BadRequestException(`La ciudad con id ${dto.cityId} no existe`);
-          case 'P2002':
-            throw new ConflictException(`Ya existe un terminal "${dto.name}" en esta ciudad`);
-        }
-      }
-
-      this.logger.error('Error inesperado al crear terminal', error as Error);
-      throw new InternalServerErrorException('No se pudo crear el terminal');
+      this.handleWriteError(error, dto.name, dto.cityId, 'crear');
     }
   }
 
@@ -74,5 +65,45 @@ export class TerminalsService {
 
     if (!terminal) throw new NotFoundException(`Terminal con id #${id} no existe`);
     return terminal;
+  }
+
+  async update(id: number, dto: UpdateTerminalDto) {
+    const current = await this.findOne(id);
+
+    try {
+      return await this.prisma.terminal.update({
+        where: { id },
+        data: dto,
+        include: { city: true },
+      });
+    } catch (error) {
+      this.handleWriteError(
+        error,
+        dto.name ?? current.name,
+        dto.cityId ?? current.cityId,
+        'actualizar',
+      );
+    }
+  }
+
+  private handleWriteError(
+    error: unknown,
+    name: string,
+    cityId: number,
+    action: 'crear' | 'actualizar',
+  ): never {
+    if (error instanceof Prisma.PrismaClientKnownRequestError) {
+      switch (error.code) {
+        case 'P2003':
+          throw new BadRequestException(`La ciudad con id ${cityId} no existe`);
+        case 'P2002':
+          throw new ConflictException(`Ya existe un terminal "${name}" en esta ciudad`);
+        case 'P2025':
+          throw new NotFoundException('El terminal no existe');
+      }
+    }
+
+    this.logger.error(`Error inesperado al ${action} terminal`, error as Error);
+    throw new InternalServerErrorException(`No se pudo ${action} el terminal`);
   }
 }
