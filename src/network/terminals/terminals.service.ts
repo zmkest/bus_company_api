@@ -4,6 +4,7 @@ import {
   Injectable,
   InternalServerErrorException,
   Logger,
+  NotFoundException,
 } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service.js';
 import { CreateTerminalDto } from './dto/create-terminal.dto.js';
@@ -63,5 +64,15 @@ export class TerminalsService {
     ]);
 
     return paginate(items, total, page, limit);
+  }
+
+  async findOne(id: number) {
+    const terminal = await this.prisma.terminal.findUnique({
+      where: { id },
+      include: { city: true },
+    });
+
+    if (!terminal) throw new NotFoundException(`Terminal con id #${id} no existe`);
+    return terminal;
   }
 }
