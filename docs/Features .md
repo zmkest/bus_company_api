@@ -82,7 +82,7 @@
   - [x] Create terminal (ADMIN)
   - [x] Get terminals (paginated, filter by city / name)
   - [x] Get terminal by id
-  - [ ] Update terminal by id (ADMIN)
+  - [x] Update terminal by id (ADMIN)
   - [ ] Delete terminal by id (block if used by routes)
   - [ ] Get cities list (distinct, for search selectors)
 

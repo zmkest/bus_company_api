@@ -1,4 +1,14 @@
-import { Body, Controller, Get, Param, ParseIntPipe, Post, Query, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  Param,
+  ParseIntPipe,
+  Patch,
+  Post,
+  Query,
+  UseGuards,
+} from '@nestjs/common';
 import { TerminalsService } from './terminals.service.js';
 import { CreateTerminalDto } from './dto/create-terminal.dto.js';
 import { AuthGuard } from '../../identity/auth/common/guards/auth.guard.js';
@@ -6,6 +16,7 @@ import { RoleGuard } from '../../common/guards/role.guard.js';
 import { Roles } from '../../common/decorators/roles-user.decorator.js';
 import { UserRole } from '../../generated/prisma/enums.js';
 import { FindTerminalQueryDto } from './dto/find-terminal-query.dto.js';
+import { UpdateTerminalDto } from './dto/update-terminal.dto.js';
 
 @Controller('terminals')
 export class TerminalsController {
@@ -30,5 +41,12 @@ export class TerminalsController {
   @Get(':id')
   findOne(@Param('id', ParseIntPipe) id: number) {
     return this.terminalsService.findOne(id);
+  }
+
+  @UseGuards(AuthGuard, RoleGuard)
+  @Roles(UserRole.ADMIN)
+  @Patch(':id')
+  update(@Param('id', ParseIntPipe) id: number, @Body() dto: UpdateTerminalDto) {
+    return this.terminalsService.update(id, dto);
   }
 }
