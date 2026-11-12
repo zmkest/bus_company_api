@@ -78,13 +78,13 @@
       - [x] Remove `status` from generic update DTO (transitions only via complete/cancel)
       - [x] Complete/cancel endpoints reject already-final maintenances (409)
 
-- [ ] **Terminals**
+- [x] **Terminals**
   - [x] Create terminal (ADMIN)
   - [x] Get terminals (paginated, filter by city / name)
   - [x] Get terminal by id
   - [x] Update terminal by id (ADMIN)
   - [x] Delete terminal by id (block if used by routes)
-  - [ ] Get cities list (distinct, for search selectors)
+  - [x] Get cities list (distinct, for search selectors)
 
 - [ ] **Routes**
   - [ ] Create route (ADMIN, origin ≠ destination, unique pair)
