@@ -11,6 +11,7 @@ import { Prisma } from '../../generated/prisma/client.js';
 import { CreateRouteDto } from './dto/create-route.dto.js';
 import { FindRoutesQueryDto } from './dto/find-routes-query.dto.js';
 import { paginate } from '../../common/interfaces/paginated.js';
+import { UpdateRouteDto } from './dto/update-route.dto.js';
 
 const terminalWithCity = { include: { city: true } } as const;
 
@@ -96,5 +97,19 @@ export class RoutesService {
 
     if (!route) throw new NotFoundException(`Ruta con id #${id} no existe`);
     return route;
+  }
+
+  async update(id: number, dto: UpdateRouteDto) {
+    if (dto.distanceKm === undefined && dto.durationMinutes === undefined) {
+      throw new BadRequestException('Debe enviar distanceKm o durationMinutes para actualizar');
+    }
+
+    await this.findOne(id);
+
+    return this.prisma.route.update({
+      where: { id },
+      data: dto,
+      include: { origin: terminalWithCity, destination: terminalWithCity },
+    });
   }
 }
