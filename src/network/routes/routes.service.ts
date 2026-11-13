@@ -12,6 +12,7 @@ import { CreateRouteDto } from './dto/create-route.dto.js';
 import { FindRoutesQueryDto } from './dto/find-routes-query.dto.js';
 import { paginate } from '../../common/interfaces/paginated.js';
 import { UpdateRouteDto } from './dto/update-route.dto.js';
+import { SearchRoutesQueryDto } from './dto/search-routes-query.dto.js';
 
 const terminalWithCity = { include: { city: true } } as const;
 
@@ -138,5 +139,30 @@ export class RoutesService {
       }
       throw error;
     }
+  }
+
+  async search({ originCityId, destinationCityId }: SearchRoutesQueryDto) {
+    if (originCityId === destinationCityId) {
+      throw new BadRequestException('La ciudad de origen y destino no pueden ser la misma');
+    }
+
+    const terminalSelect = {
+      select: { id: true, name: true, address: true, city: { select: { id: true, name: true } } },
+    } as const;
+
+    return this.prisma.route.findMany({
+      where: {
+        origin: { cityId: originCityId },
+        destination: { cityId: destinationCityId },
+      },
+      select: {
+        id: true,
+        distanceKm: true,
+        durationMinutes: true,
+        origin: terminalSelect,
+        destination: terminalSelect,
+      },
+      orderBy: [{ durationMinutes: 'asc' }, { id: 'asc' }],
+    });
   }
 }

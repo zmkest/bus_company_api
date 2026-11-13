@@ -18,6 +18,7 @@ import { Roles } from '../../common/decorators/roles-user.decorator.js';
 import { UserRole } from '../../generated/prisma/enums.js';
 import { FindRoutesQueryDto } from './dto/find-routes-query.dto.js';
 import { UpdateRouteDto } from './dto/update-route.dto.js';
+import { SearchRoutesQueryDto } from './dto/search-routes-query.dto.js';
 
 @Controller('routes')
 export class RoutesController {
@@ -35,6 +36,11 @@ export class RoutesController {
   @Get()
   findAll(@Query() query: FindRoutesQueryDto) {
     return this.routesService.findAll(query);
+  }
+
+  @Get('search')
+  search(@Query() query: SearchRoutesQueryDto) {
+    return this.routesService.search(query);
   }
 
   @UseGuards(AuthGuard, RoleGuard)
