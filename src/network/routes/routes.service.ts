@@ -112,4 +112,31 @@ export class RoutesService {
       include: { origin: terminalWithCity, destination: terminalWithCity },
     });
   }
+
+  async remove(id: number) {
+    await this.findOne(id);
+
+    const [frequencies, trips] = await this.prisma.$transaction([
+      this.prisma.frequency.count({ where: { routeId: id } }),
+      this.prisma.trip.count({ where: { routeId: id } }),
+    ]);
+
+    if (frequencies > 0 || trips > 0) {
+      throw new ConflictException(
+        `No se puede eliminar: la ruta tiene ${frequencies} frecuencia(s) y ${trips} viaje(s) asociados`,
+      );
+    }
+
+    try {
+      return await this.prisma.route.delete({ where: { id } });
+    } catch (error) {
+      // A frequency or trip may have been linked between the check and the delete (FK Restrict)
+      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2003') {
+        throw new ConflictException(
+          'No se puede eliminar: la ruta tiene frecuencias o viajes asociados',
+        );
+      }
+      throw error;
+    }
+  }
 }
