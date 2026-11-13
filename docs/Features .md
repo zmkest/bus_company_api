@@ -87,7 +87,7 @@
   - [x] Get cities list (distinct, for search selectors)
 
 - [ ] **Routes**
-  - [ ] Create route (ADMIN, origin ≠ destination, unique pair)
+  - [x] Create route (ADMIN, origin ≠ destination, unique pair)
   - [ ] Get routes (paginated, filter by origin / destination city)
   - [ ] Get route by id (includes terminals and frequencies)
   - [ ] Update route by id (distance, duration)
