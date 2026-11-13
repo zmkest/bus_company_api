@@ -90,7 +90,7 @@
   - [x] Create route (ADMIN, origin ≠ destination, unique pair)
   - [x] Get routes (paginated, filter by origin / destination city)
   - [x] Get route by id (includes terminals and frequencies)
-  - [ ] Update route by id (distance, duration)
+  - [x] Update route by id (distance, duration)
   - [ ] Delete route by id (block if it has frequencies or trips)
   - [ ] Search routes by origin and destination city (public)
 
