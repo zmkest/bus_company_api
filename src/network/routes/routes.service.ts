@@ -8,6 +8,8 @@ import {
 import { PrismaService } from '../../prisma/prisma.service.js';
 import { Prisma } from '../../generated/prisma/client.js';
 import { CreateRouteDto } from './dto/create-route.dto.js';
+import { FindRoutesQueryDto } from './dto/find-routes-query.dto.js';
+import { paginate } from '../../common/interfaces/paginated.js';
 
 const terminalWithCity = { include: { city: true } } as const;
 
@@ -55,5 +57,29 @@ export class RoutesService {
       this.logger.error('Error inesperado al crear ruta', error as Error);
       throw new InternalServerErrorException('No se pudo crear la ruta');
     }
+  }
+
+  async findAll(query: FindRoutesQueryDto) {
+    const { limit, page, order, sortBy, originCityId, destinationCityId } = query;
+
+    const where: Prisma.RouteWhereInput = {
+      ...(originCityId && { origin: { cityId: originCityId } }),
+      ...(destinationCityId && { destination: { cityId: destinationCityId } }),
+    };
+
+    const orderBy: Prisma.RouteOrderByWithRelationInput[] = [{ [sortBy]: order }, { id: order }];
+
+    const [items, total] = await this.prisma.$transaction([
+      this.prisma.route.findMany({
+        where,
+        orderBy,
+        take: limit,
+        skip: (page - 1) * limit,
+        include: { origin: terminalWithCity, destination: terminalWithCity },
+      }),
+      this.prisma.route.count({ where }),
+    ]);
+
+    return paginate(items, total, page, limit);
   }
 }
