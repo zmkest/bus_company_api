@@ -86,13 +86,13 @@
   - [x] Delete terminal by id (block if used by routes)
   - [x] Get cities list (distinct, for search selectors)
 
-- [ ] **Routes**
+- [x] **Routes**
   - [x] Create route (ADMIN, origin ≠ destination, unique pair)
   - [x] Get routes (paginated, filter by origin / destination city)
   - [x] Get route by id (includes terminals and frequencies)
   - [x] Update route by id (distance, duration)
   - [x] Delete route by id (block if it has frequencies or trips)
-  - [ ] Search routes by origin and destination city (public)
+  - [x] Search routes by origin and destination city (public)
 
 - [ ] **Frequencies (schedules)**
   - [ ] Create frequency (route, departure time, weekdays, base price)
