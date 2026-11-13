@@ -4,6 +4,7 @@ import {
   Injectable,
   InternalServerErrorException,
   Logger,
+  NotFoundException,
 } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service.js';
 import { Prisma } from '../../generated/prisma/client.js';
@@ -81,5 +82,19 @@ export class RoutesService {
     ]);
 
     return paginate(items, total, page, limit);
+  }
+
+  async findOne(id: number) {
+    const route = await this.prisma.route.findUnique({
+      where: { id },
+      include: {
+        origin: terminalWithCity,
+        destination: terminalWithCity,
+        frequencies: { orderBy: { departureTime: 'asc' } },
+      },
+    });
+
+    if (!route) throw new NotFoundException(`Ruta con id #${id} no existe`);
+    return route;
   }
 }
