@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Post, Query, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Param, ParseIntPipe, Post, Query, UseGuards } from '@nestjs/common';
 import { RoutesService } from './routes.service.js';
 import { CreateRouteDto } from './dto/create-route.dto.js';
 import { AuthGuard } from '../../identity/auth/common/guards/auth.guard.js';
@@ -23,5 +23,12 @@ export class RoutesController {
   @Get()
   findAll(@Query() query: FindRoutesQueryDto) {
     return this.routesService.findAll(query);
+  }
+
+  @UseGuards(AuthGuard, RoleGuard)
+  @Roles(UserRole.ADMIN, UserRole.OPERATOR)
+  @Get(':id')
+  findOne(@Param('id', ParseIntPipe) id: number) {
+    return this.routesService.findOne(id);
   }
 }
