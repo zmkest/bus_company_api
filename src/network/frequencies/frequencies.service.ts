@@ -40,13 +40,13 @@ export class FrequenciesService {
       throw new BadRequestException(`La ruta con id ${dto.routeId} no existe`);
     }
 
+    const departureTime = toTime(dto.departureTime);
+    const weekdays = sortWeekdays(dto.weekdays);
+
+    await this.assertNoOverlap(dto.routeId, departureTime, weekdays);
+
     return this.prisma.frequency.create({
-      data: {
-        routeId: dto.routeId,
-        departureTime: toTime(dto.departureTime),
-        weekdays: sortWeekdays(dto.weekdays),
-        basePrice: dto.basePrice,
-      },
+      data: { routeId: dto.routeId, departureTime, weekdays, basePrice: dto.basePrice },
     });
   }
 
@@ -108,13 +108,20 @@ export class FrequenciesService {
       );
     }
 
-    await this.findOne(id);
+    const current = await this.findOne(id);
+
+    const newTime = departureTime !== undefined ? toTime(departureTime) : current.departureTime;
+    const newWeekdays = weekdays !== undefined ? sortWeekdays(weekdays) : current.weekdays;
+
+    if (departureTime !== undefined || weekdays !== undefined) {
+      await this.assertNoOverlap(current.routeId, newTime, newWeekdays, id);
+    }
 
     return this.prisma.frequency.update({
       where: { id },
       data: {
-        ...(departureTime !== undefined && { departureTime: toTime(departureTime) }),
-        ...(weekdays !== undefined && { weekdays: sortWeekdays(weekdays) }),
+        departureTime: newTime,
+        weekdays: newWeekdays,
         ...(basePrice !== undefined && { basePrice }),
       },
       include: { route: routeSummary },
@@ -141,5 +148,29 @@ export class FrequenciesService {
     const deleted = await this.prisma.frequency.delete({ where: { id } });
 
     return { ...deleted, detachedTrips: _count.trips };
+  }
+
+  private async assertNoOverlap(
+    routeId: number,
+    departureTime: Date,
+    weekdays: Weekday[],
+    excludeId?: number,
+  ) {
+    const clash = await this.prisma.frequency.findFirst({
+      where: {
+        routeId,
+        departureTime,
+        weekdays: { hasSome: weekdays },
+        ...(excludeId && { id: { not: excludeId } }),
+      },
+      select: { id: true, weekdays: true },
+    });
+
+    if (clash) {
+      const shared = weekdays.filter((d) => clash.weekdays.includes(d));
+      throw new ConflictException(
+        `Ya existe la frecuencia #${clash.id} en esta ruta a la misma hora para: ${shared.join(', ')}`,
+      );
+    }
   }
 }
