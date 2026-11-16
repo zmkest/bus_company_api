@@ -94,14 +94,14 @@
   - [x] Delete route by id (block if it has frequencies or trips)
   - [x] Search routes by origin and destination city (public)
 
-- [ ] **Frequencies (schedules)**
+- [x] **Frequencies (schedules)**
   - [x] Create frequency (route, departure time, weekdays, base price)
   - [x] Get frequencies (paginated, filter by route, weekday, active)
   - [x] Get frequency by id
   - [x] Update frequency by id
   - [x] Activate / deactivate frequency
   - [x] Delete frequency by id (trips keep history, `frequencyId` → null)
-  - [ ] Validate no duplicated frequency (same route, time and weekdays)
+  - [x] Validate no duplicated frequency (same route, time and weekdays)
 
 - [ ] **Trips**
   - [ ] Create trip manually (route, bus, departure, price)
