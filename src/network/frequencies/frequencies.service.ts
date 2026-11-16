@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service.js';
 import { Prisma } from '../../generated/prisma/client.js';
 import { CreateFrequencyDto } from './dto/create-frequency.dto.js';
@@ -67,5 +67,26 @@ export class FrequenciesService {
     ]);
 
     return paginate(items, total, page, limit);
+  }
+
+  async findOne(id: number) {
+    const frequency = await this.prisma.frequency.findUnique({
+      where: { id },
+      include: {
+        route: {
+          select: {
+            id: true,
+            distanceKm: true,
+            durationMinutes: true,
+            origin: terminalSelect,
+            destination: terminalSelect,
+          },
+        },
+        _count: { select: { trips: true } },
+      },
+    });
+
+    if (!frequency) throw new NotFoundException(`Frecuencia con id #${id} no existe`);
+    return frequency;
   }
 }
