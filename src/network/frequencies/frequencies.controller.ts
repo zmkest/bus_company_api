@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Post, Query, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Param, ParseIntPipe, Post, Query, UseGuards } from '@nestjs/common';
 import { FrequenciesService } from './frequencies.service.js';
 import { CreateFrequencyDto } from './dto/create-frequency.dto.js';
 import { AuthGuard } from '../../identity/auth/common/guards/auth.guard.js';
@@ -23,5 +23,12 @@ export class FrequenciesController {
   @Get()
   findAll(@Query() query: FindFrequenciesQueryDto) {
     return this.frequenciesService.findAll(query);
+  }
+
+  @UseGuards(AuthGuard, RoleGuard)
+  @Roles(UserRole.ADMIN, UserRole.OPERATOR)
+  @Get(':id')
+  findOne(@Param('id', ParseIntPipe) id: number) {
+    return this.frequenciesService.findOne(id);
   }
 }

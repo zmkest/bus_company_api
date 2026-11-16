@@ -97,7 +97,7 @@
 - [ ] **Frequencies (schedules)**
   - [x] Create frequency (route, departure time, weekdays, base price)
   - [x] Get frequencies (paginated, filter by route, weekday, active)
-  - [ ] Get frequency by id
+  - [x] Get frequency by id
   - [ ] Update frequency by id
   - [ ] Activate / deactivate frequency
   - [ ] Delete frequency by id (trips keep history, `frequencyId` → null)
