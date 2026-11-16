@@ -95,7 +95,7 @@
   - [x] Search routes by origin and destination city (public)
 
 - [ ] **Frequencies (schedules)**
-  - [ ] Create frequency (route, departure time, weekdays, base price)
+  - [x] Create frequency (route, departure time, weekdays, base price)
   - [ ] Get frequencies (paginated, filter by route, weekday, active)
   - [ ] Get frequency by id
   - [ ] Update frequency by id
