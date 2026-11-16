@@ -96,7 +96,7 @@
 
 - [ ] **Frequencies (schedules)**
   - [x] Create frequency (route, departure time, weekdays, base price)
-  - [ ] Get frequencies (paginated, filter by route, weekday, active)
+  - [x] Get frequencies (paginated, filter by route, weekday, active)
   - [ ] Get frequency by id
   - [ ] Update frequency by id
   - [ ] Activate / deactivate frequency
