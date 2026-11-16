@@ -3,6 +3,7 @@ import {
   Controller,
   Get,
   Param,
+  ParseBoolPipe,
   ParseIntPipe,
   Patch,
   Post,
@@ -48,5 +49,15 @@ export class FrequenciesController {
   @Patch(':id')
   update(@Param('id', ParseIntPipe) id: number, @Body() dto: UpdateFrequencyDto) {
     return this.frequenciesService.update(id, dto);
+  }
+
+  @UseGuards(AuthGuard, RoleGuard)
+  @Roles(UserRole.ADMIN)
+  @Patch(':id/active')
+  updateActive(
+    @Param('id', ParseIntPipe) id: number,
+    @Body('isActive', ParseBoolPipe) isActive: boolean,
+  ) {
+    return this.frequenciesService.updateActive(id, isActive);
   }
 }

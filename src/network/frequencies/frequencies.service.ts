@@ -1,4 +1,9 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service.js';
 import { Prisma } from '../../generated/prisma/client.js';
 import { CreateFrequencyDto } from './dto/create-frequency.dto.js';
@@ -112,6 +117,20 @@ export class FrequenciesService {
         ...(weekdays !== undefined && { weekdays: sortWeekdays(weekdays) }),
         ...(basePrice !== undefined && { basePrice }),
       },
+      include: { route: routeSummary },
+    });
+  }
+
+  async updateActive(id: number, isActive: boolean) {
+    const frequency = await this.findOne(id);
+
+    if (frequency.isActive === isActive) {
+      throw new ConflictException(`La frecuencia ya está ${isActive ? 'activa' : 'inactiva'}`);
+    }
+
+    return this.prisma.frequency.update({
+      where: { id },
+      data: { isActive },
       include: { route: routeSummary },
     });
   }
