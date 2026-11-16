@@ -134,4 +134,12 @@ export class FrequenciesService {
       include: { route: routeSummary },
     });
   }
+
+  async remove(id: number) {
+    const { _count } = await this.findOne(id);
+
+    const deleted = await this.prisma.frequency.delete({ where: { id } });
+
+    return { ...deleted, detachedTrips: _count.trips };
+  }
 }

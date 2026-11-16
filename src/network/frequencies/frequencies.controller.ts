@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   Param,
   ParseBoolPipe,
@@ -59,5 +60,12 @@ export class FrequenciesController {
     @Body('isActive', ParseBoolPipe) isActive: boolean,
   ) {
     return this.frequenciesService.updateActive(id, isActive);
+  }
+
+  @UseGuards(AuthGuard, RoleGuard)
+  @Roles(UserRole.ADMIN)
+  @Delete(':id')
+  remove(@Param('id', ParseIntPipe) id: number) {
+    return this.frequenciesService.remove(id);
   }
 }
