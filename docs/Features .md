@@ -99,7 +99,7 @@
   - [x] Get frequencies (paginated, filter by route, weekday, active)
   - [x] Get frequency by id
   - [x] Update frequency by id
-  - [ ] Activate / deactivate frequency
+  - [x] Activate / deactivate frequency
   - [ ] Delete frequency by id (trips keep history, `frequencyId` → null)
   - [ ] Validate no duplicated frequency (same route, time and weekdays)
 
