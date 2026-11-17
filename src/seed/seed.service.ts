@@ -1,6 +1,8 @@
 import { Injectable, Logger, OnApplicationBootstrap } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { CITIES } from './data/cities.data.js';
+import { DemoSeeder } from './demo.seed.js';
+import { envs } from '../config/envs.js';
 
 @Injectable()
 export class SeedService implements OnApplicationBootstrap {
@@ -19,6 +21,15 @@ export class SeedService implements OnApplicationBootstrap {
     } catch (error) {
       this.logger.error(
         'Error ejecutando el seed de ciudades',
+        error instanceof Error ? error.stack : String(error),
+      );
+    }
+
+    try {
+      await new DemoSeeder(this.prisma, envs.app_timezone).run();
+    } catch (error) {
+      this.logger.error(
+        'Error ejecutando el seed de datos demo',
         error instanceof Error ? error.stack : String(error),
       );
     }
