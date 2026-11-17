@@ -5,7 +5,13 @@ import { Weekday } from '../../../generated/prisma/enums.js';
 export const MAX_GENERATION_DAYS = 31;
 
 // Mismo orden que luxon: weekday 1 = lunes ... 7 = domingo
-const WEEKDAY_ORDER = Object.values(Weekday);
+export const WEEKDAY_ORDER = Object.values(Weekday);
+
+export const weekdayOf = (date: Date, zone: string) =>
+  WEEKDAY_ORDER[DateTime.fromJSDate(date).setZone(zone).weekday - 1];
+
+/** departureTime es hora local de pared guardada como 1970-01-01THH:mm:00Z */
+export const minutesOfDay = (time: Date) => time.getUTCHours() * 60 + time.getUTCMinutes();
 
 export const addMinutes = (date: Date, minutes: number) =>
   new Date(date.getTime() + minutes * 60_000);
@@ -34,20 +40,28 @@ export function assertGenerationRange(from: DateTime, to: DateTime, today: DateT
   }
 }
 
-/** departureTime es hora local de pared guardada como 1970-01-01THH:mm:00Z */
+export interface Departure {
+  scheduledDeparture: Date;
+  weekday: Weekday;
+}
+
 export function buildDepartures(
   departureTime: Date,
   weekdays: Weekday[],
   from: DateTime,
   to: DateTime,
-): Date[] {
+): Departure[] {
   const hour = departureTime.getUTCHours();
   const minute = departureTime.getUTCMinutes();
-  const departures: Date[] = [];
+  const departures: Departure[] = [];
 
   for (let day = from; day <= to; day = day.plus({ days: 1 })) {
-    if (!weekdays.includes(WEEKDAY_ORDER[day.weekday - 1])) continue;
-    departures.push(day.set({ hour, minute, second: 0, millisecond: 0 }).toJSDate());
+    const weekday = WEEKDAY_ORDER[day.weekday - 1];
+    if (!weekdays.includes(weekday)) continue;
+    departures.push({
+      scheduledDeparture: day.set({ hour, minute, second: 0, millisecond: 0 }).toJSDate(),
+      weekday,
+    });
   }
 
   return departures;

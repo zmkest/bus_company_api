@@ -1,18 +1,21 @@
-import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
-import { DateTime } from 'luxon';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { Prisma } from '../../../generated/prisma/client.js';
 import { BusStatus, TripStatus } from '../../../generated/prisma/enums.js';
 import { envs } from '../../../config/envs.js';
 import { continuityIssue, RouteEnds, TimeSlot, turnaroundWindow } from './bus-assignment.rules.js';
+import { BusAssignmentConflict, UnassignedCode } from './assignment-conflict.js';
+import {
+  label,
+  nextMismatchMessage,
+  overlapMessage,
+  previousMismatchMessage,
+  terminalLabelSelect,
+} from './assignment-messages.js';
 
 export interface TripToAssign extends TimeSlot {
   id?: number;
   route: RouteEnds;
 }
-
-const terminalLabel = {
-  select: { name: true, city: { select: { name: true } } },
-} as const;
 
 const neighborSelect = {
   id: true,
@@ -21,18 +24,11 @@ const neighborSelect = {
     select: {
       originId: true,
       destinationId: true,
-      origin: terminalLabel,
-      destination: terminalLabel,
+      origin: terminalLabelSelect,
+      destination: terminalLabelSelect,
     },
   },
 } as const;
-
-type Terminal = { name: string; city: { name: string } };
-
-const label = (t: Terminal) => `${t.name} (${t.city.name})`;
-
-const formatLocal = (date: Date) =>
-  DateTime.fromJSDate(date).setZone(envs.app_timezone).toFormat('dd/MM/yyyy HH:mm');
 
 @Injectable()
 export class BusAssignmentService {
@@ -43,7 +39,10 @@ export class BusAssignmentService {
 
     if (!bus) throw new NotFoundException(`Bus con id #${busId} no existe`);
     if (bus.status === BusStatus.OUT_OF_SERVICE) {
-      throw new ConflictException(`El bus ${bus.plate} está fuera de servicio`);
+      throw new BusAssignmentConflict(
+        `El bus ${bus.plate} está fuera de servicio`,
+        UnassignedCode.BUS_OUT_OF_SERVICE,
+      );
     }
 
     await this.assertNoOverlap(tx, bus, trip);
@@ -73,9 +72,10 @@ export class BusAssignmentService {
     });
 
     if (clash) {
-      throw new ConflictException(
-        `El bus ${bus.plate} tiene el viaje #${clash.id} (${formatLocal(clash.scheduledDeparture)} - ` +
-          `${formatLocal(clash.scheduledArrival)}) que se cruza con este viaje (margen de ${turnaround} min)`,
+      throw new BusAssignmentConflict(
+        overlapMessage(bus.plate, clash, turnaround),
+        UnassignedCode.OVERLAP,
+        clash.id,
       );
     }
   }
@@ -109,21 +109,28 @@ export class BusAssignmentService {
 
     const [origin, destination] = await Promise.all(
       [trip.route.originId, trip.route.destinationId].map((id) =>
-        tx.terminal.findUniqueOrThrow({ where: { id }, ...terminalLabel }),
+        tx.terminal.findUniqueOrThrow({ where: { id }, ...terminalLabelSelect }),
       ),
     );
 
     if (issue === 'previous' && previous) {
-      throw new ConflictException(
-        `El viaje anterior #${previous.id} del bus ${bus.plate} termina en ` +
-          `${label(previous.route.destination)}, pero este viaje sale de ${label(origin)}`,
+      throw new BusAssignmentConflict(
+        previousMismatchMessage(
+          bus.plate,
+          previous.id,
+          label(previous.route.destination),
+          label(origin),
+        ),
+        UnassignedCode.LOCATION_MISMATCH,
+        previous.id,
       );
     }
 
     if (next) {
-      throw new ConflictException(
-        `El viaje siguiente #${next.id} del bus ${bus.plate} sale de ` +
-          `${label(next.route.origin)}, pero este viaje termina en ${label(destination)}`,
+      throw new BusAssignmentConflict(
+        nextMismatchMessage(bus.plate, next.id, label(next.route.origin), label(destination)),
+        UnassignedCode.LOCATION_MISMATCH,
+        next.id,
       );
     }
   }

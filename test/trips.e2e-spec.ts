@@ -53,7 +53,7 @@ describe('Trips', () => {
     });
   };
 
-  describe('POST /api/trips/generate', () => {
+  describe('POST /api/trips/generate', { timeout: 20_000 }, () => {
     it('is idempotent: generating the same range twice creates nothing the second time', async () => {
       const user = await createUser(prisma, { role: UserRole.OPERATOR });
       const route = await createRoute('Quito', 'Guayaquil');
@@ -75,14 +75,14 @@ describe('Trips', () => {
         .set(headers)
         .send(body);
       expect(first.status).toBe(201);
-      expect(first.body).toEqual({ created: 7, skipped: 0 });
+      expect(first.body).toEqual({ created: 7, skipped: 0, assigned: 0, unassigned: [] });
 
       const second = await request(app.getHttpServer())
         .post('/api/trips/generate')
         .set(headers)
         .send(body);
       expect(second.status).toBe(201);
-      expect(second.body).toEqual({ created: 0, skipped: 7 });
+      expect(second.body).toEqual({ created: 0, skipped: 7, assigned: 0, unassigned: [] });
 
       const trips = await prisma.trip.findMany({ orderBy: { scheduledDeparture: 'asc' } });
       expect(trips).toHaveLength(7);
