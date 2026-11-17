@@ -1,5 +1,6 @@
 import 'dotenv/config';
 import joi from 'joi';
+import { IANAZone } from 'luxon';
 
 interface EnvVars {
   PORT: number;
@@ -17,6 +18,8 @@ interface EnvVars {
   JWT_PWD_RESET_AUDIENCE: string;
   RESEND_API_KEY: string;
   RESEND_EMAIL: string;
+  APP_TIMEZONE: string;
+  TURNAROUND_MINUTES: number;
 }
 
 const envsSchema = joi
@@ -36,6 +39,13 @@ const envsSchema = joi
     JWT_PWD_RESET_AUDIENCE: joi.string().required(),
     RESEND_API_KEY: joi.string().required(),
     RESEND_EMAIL: joi.string().required(),
+    APP_TIMEZONE: joi
+      .string()
+      .default('America/Guayaquil')
+      .custom((value: string, helpers) =>
+        IANAZone.isValidZone(value) ? value : helpers.error('any.invalid'),
+      ),
+    TURNAROUND_MINUTES: joi.number().integer().min(0).default(30),
   })
   .unknown(true);
 
@@ -63,4 +73,6 @@ export const envs = {
   jwt_pwd_reset_audience: envVars.JWT_PWD_RESET_AUDIENCE,
   resend_api_key: envVars.RESEND_API_KEY,
   resend_email: envVars.RESEND_EMAIL,
+  app_timezone: envVars.APP_TIMEZONE,
+  turnaround_minutes: envVars.TURNAROUND_MINUTES,
 };
