@@ -19,6 +19,8 @@ import {
 } from './common/trip-schedule.util.js';
 import { BusAssignmentService } from './bus-assignment/bus-assignment.service.js';
 import { rethrowBusOverlap } from './common/prisma-errors.util.js';
+import { FindTripsQueryDto } from './dto/find-trips-query.dto.js';
+import { paginate } from '../../common/interfaces/paginated.js';
 
 const terminalSelect = {
   select: { id: true, name: true, city: { select: { id: true, name: true } } },
@@ -80,6 +82,50 @@ export class TripsService {
       .then(({ id }) =>
         this.prisma.trip.findUniqueOrThrow({ where: { id }, include: tripInclude }),
       );
+  }
+
+  async findAll(query: FindTripsQueryDto) {
+    const { limit, page, order, sortBy, routeId, busPlate, status, unassigned } = query;
+
+    if (unassigned && busPlate) {
+      throw new BadRequestException('No se puede filtrar por busPlate con unassigned=true');
+    }
+
+    const zone = envs.app_timezone;
+    const from = query.from ? parseLocalDate(query.from, zone) : undefined;
+    const to = query.to ? parseLocalDate(query.to, zone) : undefined;
+
+    if (from && to && from > to) {
+      throw new BadRequestException('from: Debe ser menor o igual a to');
+    }
+
+    const where: Prisma.TripWhereInput = {
+      ...(routeId && { routeId }),
+      ...(status && { status }),
+      ...(busPlate && { bus: { plate: { contains: busPlate, mode: 'insensitive' } } }),
+      ...(unassigned !== undefined && { busId: unassigned ? null : { not: null } }),
+      ...((from || to) && {
+        scheduledDeparture: {
+          ...(from && { gte: from.toJSDate() }),
+          ...(to && { lt: to.plus({ days: 1 }).toJSDate() }),
+        },
+      }),
+    };
+
+    const orderBy: Prisma.TripOrderByWithRelationInput[] = [{ [sortBy]: order }, { id: order }];
+
+    const [items, total] = await this.prisma.$transaction([
+      this.prisma.trip.findMany({
+        where,
+        orderBy,
+        take: limit,
+        skip: (page - 1) * limit,
+        include: tripInclude,
+      }),
+      this.prisma.trip.count({ where }),
+    ]);
+
+    return paginate(items, total, page, limit);
   }
 
   async generate(dto: GenerateTripsDto) {

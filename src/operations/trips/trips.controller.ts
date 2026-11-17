@@ -1,8 +1,19 @@
-import { Body, Controller, Param, ParseIntPipe, Patch, Post, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  Param,
+  ParseIntPipe,
+  Patch,
+  Post,
+  Query,
+  UseGuards,
+} from '@nestjs/common';
 import { TripsService } from './trips.service.js';
 import { CreateTripDto } from './dto/create-trip.dto.js';
 import { GenerateTripsDto } from './dto/generate-trips.dto.js';
 import { AssignBusDto } from './dto/assign-bus.dto.js';
+import { FindTripsQueryDto } from './dto/find-trips-query.dto.js';
 import { AuthGuard } from '../../identity/auth/common/guards/auth.guard.js';
 import { RoleGuard } from '../../common/guards/role.guard.js';
 import { Roles } from '../../common/decorators/roles-user.decorator.js';
@@ -17,6 +28,13 @@ export class TripsController {
   @Post()
   create(@Body() dto: CreateTripDto) {
     return this.tripsService.create(dto);
+  }
+
+  @UseGuards(AuthGuard, RoleGuard)
+  @Roles(UserRole.ADMIN, UserRole.OPERATOR)
+  @Get()
+  findAll(@Query() query: FindTripsQueryDto) {
+    return this.tripsService.findAll(query);
   }
 
   @UseGuards(AuthGuard, RoleGuard)

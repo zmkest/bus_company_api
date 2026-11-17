@@ -241,4 +241,73 @@ describe('Trips', () => {
       expect(isBusOverlapViolation(error)).toBe(true);
     });
   });
+
+  describe('GET /api/trips', { timeout: 20_000 }, () => {
+    const seedTrips = async () => {
+      const route = await createRoute('Quito', 'Guayaquil');
+      const bus = await createBus(prisma);
+      const departure = DateTime.now().setZone(ZONE).plus({ days: 3 }).startOf('day');
+
+      await prisma.trip.createMany({
+        data: [0, 6, 12].map((hours, i) => {
+          const scheduledDeparture = departure.plus({ hours }).toJSDate();
+          const scheduledArrival = departure.plus({ hours: hours + 4 }).toJSDate();
+          return {
+            routeId: route.id,
+            busId: i === 0 ? bus.id : null,
+            scheduledDeparture,
+            scheduledArrival,
+            estimatedArrival: scheduledArrival,
+            durationMinutes: 240,
+            price: 10,
+          };
+        }),
+      });
+
+      return { bus, date: departure.toISODate() };
+    };
+
+    const list = async (query: Record<string, string>) => {
+      const user = await createUser(prisma, { role: UserRole.OPERATOR });
+      return request(app.getHttpServer())
+        .get('/api/trips')
+        .query(query)
+        .set(await authHeader(jwt, user));
+    };
+
+    it('returns paginated trips filtered by date', async () => {
+      const { date } = await seedTrips();
+
+      const res = await list({ from: date!, to: date!, limit: '2' });
+
+      expect(res.status).toBe(200);
+      expect(res.body.items).toHaveLength(2);
+      expect(res.body.meta).toMatchObject({ total: 3, page: 1, limit: 2, hasNext: true });
+    });
+
+    it('filters unassigned trips', async () => {
+      await seedTrips();
+
+      const res = await list({ unassigned: 'true' });
+
+      expect(res.status).toBe(200);
+      expect(res.body.meta.total).toBe(2);
+      expect(res.body.items.every((t: { bus: unknown }) => t.bus === null)).toBe(true);
+    });
+
+    it('filters by bus plate', async () => {
+      const { bus } = await seedTrips();
+
+      const res = await list({ busPlate: bus.plate.toLowerCase() });
+
+      expect(res.status).toBe(200);
+      expect(res.body.meta.total).toBe(1);
+    });
+
+    it('rejects unassigned=true with busPlate', async () => {
+      const res = await list({ unassigned: 'true', busPlate: 'ABC' });
+
+      expect(res.status).toBe(400);
+    });
+  });
 });
