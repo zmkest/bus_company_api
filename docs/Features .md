@@ -104,7 +104,7 @@
   - [x] Validate no duplicated frequency (same route, time and weekdays)
 
 - [ ] **Trips**
-  - [ ] Create trip manually (route, bus, departure, price)
+  - [x] Create trip manually (route, bus, departure, price)
   - [ ] Generate trips from frequencies (date range, skips existing: `frequencyId + scheduledDeparture`)
   - [ ] Get trips (paginated, filter by route, bus plate, status, date range)
   - [ ] Search available trips (public: origin, destination, date, seats left)

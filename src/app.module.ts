@@ -10,6 +10,7 @@ import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { APP_GUARD } from '@nestjs/core';
 import { NetworkModule } from './network/network.module.js';
 import { SeedModule } from './seed/seed.module.js';
+import { OperationsModule } from './operations/operations.module.js';
 
 @Module({
   imports: [
@@ -24,6 +25,7 @@ import { SeedModule } from './seed/seed.module.js';
     BusesModule,
     NetworkModule,
     SeedModule,
+    OperationsModule,
   ],
   controllers: [AppController],
   providers: [AppService, { provide: APP_GUARD, useClass: ThrottlerGuard }],
