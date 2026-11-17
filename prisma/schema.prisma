@@ -196,7 +196,7 @@ model Trip {
   id                 Int        @id @default(autoincrement())
   routeId            Int
   frequencyId        Int?
-  busId              Int
+  busId              Int?
   scheduledDeparture DateTime
   scheduledArrival   DateTime
   estimatedArrival   DateTime
@@ -210,7 +210,7 @@ model Trip {
 
   route     Route      @relation(fields: [routeId], references: [id], onDelete: Restrict)
   frequency Frequency? @relation(fields: [frequencyId], references: [id], onDelete: SetNull)
-  bus       Bus        @relation(fields: [busId], references: [id], onDelete: Restrict)
+  bus       Bus?       @relation(fields: [busId], references: [id], onDelete: Restrict)
   crew      TripCrew[]
   tickets   Ticket[]
 
