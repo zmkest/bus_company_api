@@ -105,12 +105,12 @@
 
 - [ ] **Trips**
   - [x] Create trip manually (route, bus, departure, price)
-  - [ ] Generate trips from frequencies (date range, skips existing: `frequencyId + scheduledDeparture`)
-  - [ ] Get trips (paginated, filter by route, bus plate, status, date range)
+  - [x] Generate trips from frequencies (date range, skips existing: `frequencyId + scheduledDeparture`)
+  - [x] Get trips (paginated, filter by route, bus plate, status, date range)
   - [ ] Search available trips (public: origin, destination, date, seats left)
   - [ ] Get trip by id (includes route, bus, crew, seats left)
   - [ ] Update trip (reschedule, change bus or price) only if `SCHEDULED`
-  - [ ] Validate bus availability (status `AVAILABLE` and no overlapping trips, considering route duration)
+  - [x] Validate bus availability (status `AVAILABLE` and no overlapping trips, considering route duration)
   - [ ] Start trip (`IN_PROGRESS`, set `actualDeparture`, bus → `ON_ROUTE`, save history)
   - [ ] Complete trip (`COMPLETED`, set `actualArrival`, bus → `AVAILABLE`, update `odometerKm` with route distance)
   - [ ] Cancel trip (`CANCELLED`, cancel tickets, refund payments, free bus)
