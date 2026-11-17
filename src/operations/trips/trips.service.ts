@@ -1,6 +1,12 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service.js';
 import { Prisma } from '../../generated/prisma/client.js';
+import { TripStatus } from '../../generated/prisma/enums.js';
 import { envs } from '../../config/envs.js';
 import { CreateTripDto } from './dto/create-trip.dto.js';
 import { GenerateTripsDto } from './dto/generate-trips.dto.js';
@@ -11,10 +17,15 @@ import {
   parseLocalDate,
   todayIn,
 } from './common/trip-schedule.util.js';
+import { BusAssignmentService } from './bus-assignment/bus-assignment.service.js';
+import { rethrowBusOverlap } from './common/prisma-errors.util.js';
 
 const terminalSelect = {
   select: { id: true, name: true, city: { select: { id: true, name: true } } },
 } as const;
+
+// La base es remota: margen para transacciones con varias consultas
+const TX_OPTIONS = { timeout: 15_000 } as const;
 
 const tripInclude = {
   route: { select: { id: true, origin: terminalSelect, destination: terminalSelect } },
@@ -23,7 +34,10 @@ const tripInclude = {
 
 @Injectable()
 export class TripsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly busAssignment: BusAssignmentService,
+  ) {}
 
   async create(dto: CreateTripDto) {
     const { routeId, busId, scheduledDeparture, price } = dto;
@@ -31,7 +45,7 @@ export class TripsService {
     const [route, bus] = await Promise.all([
       this.prisma.route.findUnique({
         where: { id: routeId },
-        select: { id: true, durationMinutes: true },
+        select: { id: true, originId: true, destinationId: true, durationMinutes: true },
       }),
       this.prisma.bus.findUnique({ where: { id: busId }, select: { id: true } }),
     ]);
@@ -41,18 +55,31 @@ export class TripsService {
 
     const scheduledArrival = addMinutes(scheduledDeparture, route.durationMinutes);
 
-    return this.prisma.trip.create({
-      data: {
-        routeId,
-        busId,
-        scheduledDeparture,
-        scheduledArrival,
-        estimatedArrival: scheduledArrival,
-        durationMinutes: route.durationMinutes,
-        price,
-      },
-      include: tripInclude,
-    });
+    return this.prisma
+      .$transaction(async (tx) => {
+        await this.busAssignment.assertCanAssign(tx, busId, {
+          scheduledDeparture,
+          scheduledArrival,
+          route,
+        });
+
+        return tx.trip.create({
+          data: {
+            routeId,
+            busId,
+            scheduledDeparture,
+            scheduledArrival,
+            estimatedArrival: scheduledArrival,
+            durationMinutes: route.durationMinutes,
+            price,
+          },
+          select: { id: true },
+        });
+      }, TX_OPTIONS)
+      .catch(rethrowBusOverlap)
+      .then(({ id }) =>
+        this.prisma.trip.findUniqueOrThrow({ where: { id }, include: tripInclude }),
+      );
   }
 
   async generate(dto: GenerateTripsDto) {
@@ -99,5 +126,35 @@ export class TripsService {
     const { count } = await this.prisma.trip.createMany({ data, skipDuplicates: true });
 
     return { created: count, skipped: data.length - count };
+  }
+
+  async assignBus(id: number, busId: number | null) {
+    return this.prisma
+      .$transaction(async (tx) => {
+        const trip = await tx.trip.findUnique({
+          where: { id },
+          select: {
+            id: true,
+            status: true,
+            scheduledDeparture: true,
+            scheduledArrival: true,
+            route: { select: { originId: true, destinationId: true } },
+          },
+        });
+
+        if (!trip) throw new NotFoundException(`Viaje con id #${id} no existe`);
+        if (trip.status !== TripStatus.SCHEDULED) {
+          throw new ConflictException(
+            `Solo se puede cambiar el bus de un viaje SCHEDULED (estado actual: ${trip.status})`,
+          );
+        }
+
+        if (busId !== null) await this.busAssignment.assertCanAssign(tx, busId, trip);
+
+        // TODO: cuando existan tickets, cambiar de bus exigirá remapear asientos por número
+        await tx.trip.update({ where: { id }, data: { busId } });
+      }, TX_OPTIONS)
+      .catch(rethrowBusOverlap)
+      .then(() => this.prisma.trip.findUniqueOrThrow({ where: { id }, include: tripInclude }));
   }
 }

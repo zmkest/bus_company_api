@@ -5,9 +5,10 @@ import { DateTime } from 'luxon';
 import { PrismaService } from '../src/prisma/prisma.service.js';
 import { createTestApp } from './helpers/app.js';
 import { resetDatabase } from './helpers/db.js';
-import { createUser } from './helpers/factories.js';
+import { createBus, createUser } from './helpers/factories.js';
 import { authHeader } from './helpers/auth.js';
-import { UserRole, Weekday } from '../src/generated/prisma/enums.js';
+import { BusStatus, TripStatus, UserRole, Weekday } from '../src/generated/prisma/enums.js';
+import { isBusOverlapViolation } from '../src/operations/trips/common/prisma-errors.util.js';
 
 const ZONE = 'America/Guayaquil';
 
@@ -112,6 +113,132 @@ describe('Trips', () => {
         .send({ from: '2099-01-01', to: '2099-01-02' });
 
       expect(res.status).toBe(403);
+    });
+  });
+
+  describe('PATCH /api/trips/:id/bus', { timeout: 20_000 }, () => {
+    const base = DateTime.now()
+      .setZone(ZONE)
+      .plus({ days: 2 })
+      .set({ hour: 8, minute: 0, second: 0, millisecond: 0 });
+
+    const createTrip = (
+      route: { id: number; durationMinutes: number },
+      departure: DateTime,
+      busId: number | null = null,
+      status: TripStatus = TripStatus.SCHEDULED,
+    ) => {
+      const scheduledDeparture = departure.toJSDate();
+      const scheduledArrival = departure.plus({ minutes: route.durationMinutes }).toJSDate();
+      return prisma.trip.create({
+        data: {
+          routeId: route.id,
+          busId,
+          scheduledDeparture,
+          scheduledArrival,
+          estimatedArrival: scheduledArrival,
+          durationMinutes: route.durationMinutes,
+          price: 10,
+          status,
+        },
+      });
+    };
+
+    const assign = async (tripId: number, busId: number | null) => {
+      const user = await createUser(prisma, { role: UserRole.OPERATOR });
+      return request(app.getHttpServer())
+        .patch(`/api/trips/${tripId}/bus`)
+        .set(await authHeader(jwt, user))
+        .send({ busId });
+    };
+
+    it('assigns a bus to an unassigned trip', async () => {
+      const route = await createRoute('Quito', 'Guayaquil');
+      const bus = await createBus(prisma);
+      const trip = await createTrip(route, base);
+
+      const res = await assign(trip.id, bus.id);
+
+      expect(res.status).toBe(200);
+      expect(res.body).toMatchObject({ id: trip.id, bus: { id: bus.id, plate: bus.plate } });
+    });
+
+    it('allows a bus in MAINTENANCE (current state) but not OUT_OF_SERVICE', async () => {
+      const route = await createRoute('Quito', 'Guayaquil');
+      const inMaintenance = await createBus(prisma, { status: BusStatus.MAINTENANCE });
+      const outOfService = await createBus(prisma, { status: BusStatus.OUT_OF_SERVICE });
+      const trip = await createTrip(route, base);
+
+      expect((await assign(trip.id, outOfService.id)).status).toBe(409);
+      expect((await assign(trip.id, inMaintenance.id)).status).toBe(200);
+    });
+
+    it('rejects an overlapping trip considering the turnaround margin', async () => {
+      const there = await createRoute('Quito', 'Guayaquil');
+      const back = await createRoute('Guayaquil', 'Quito');
+      const bus = await createBus(prisma);
+      const first = await createTrip(there, base, bus.id);
+      const tooSoon = await createTrip(back, base.plus({ minutes: there.durationMinutes + 10 }));
+
+      const res = await assign(tooSoon.id, bus.id);
+
+      expect(res.status).toBe(409);
+      expect(res.body.message).toContain(`#${first.id}`);
+    });
+
+    it('accepts a chained return trip after the margin', async () => {
+      const there = await createRoute('Quito', 'Guayaquil');
+      const back = await createRoute('Guayaquil', 'Quito');
+      const bus = await createBus(prisma);
+      await createTrip(there, base, bus.id);
+      const ret = await createTrip(back, base.plus({ minutes: there.durationMinutes + 30 }));
+
+      expect((await assign(ret.id, bus.id)).status).toBe(200);
+    });
+
+    it('rejects when the previous trip ends in another terminal', async () => {
+      const there = await createRoute('Quito', 'Guayaquil');
+      const elsewhere = await createRoute('Cuenca', 'Loja');
+      const bus = await createBus(prisma);
+      await createTrip(there, base, bus.id);
+      const trip = await createTrip(elsewhere, base.plus({ hours: 8 }));
+
+      const res = await assign(trip.id, bus.id);
+
+      expect(res.status).toBe(409);
+      expect(res.body.message).toContain('Guayaquil');
+      expect(res.body.message).toContain('Cuenca');
+    });
+
+    it('removes the bus with null', async () => {
+      const route = await createRoute('Quito', 'Guayaquil');
+      const bus = await createBus(prisma);
+      const trip = await createTrip(route, base, bus.id);
+
+      const res = await assign(trip.id, null);
+
+      expect(res.status).toBe(200);
+      expect(res.body.bus).toBeNull();
+    });
+
+    it('rejects when the trip is not SCHEDULED', async () => {
+      const route = await createRoute('Quito', 'Guayaquil');
+      const bus = await createBus(prisma);
+      const trip = await createTrip(route, base, null, TripStatus.CANCELLED);
+
+      expect((await assign(trip.id, bus.id)).status).toBe(409);
+    });
+
+    it('the database constraint blocks overlapping trips of the same bus', async () => {
+      const route = await createRoute('Quito', 'Guayaquil');
+      const bus = await createBus(prisma);
+      await createTrip(route, base, bus.id);
+
+      const error: unknown = await createTrip(route, base.plus({ hours: 1 }), bus.id).catch(
+        (e: unknown) => e,
+      );
+
+      expect(isBusOverlapViolation(error)).toBe(true);
     });
   });
 });

@@ -1,7 +1,8 @@
-import { Body, Controller, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, Param, ParseIntPipe, Patch, Post, UseGuards } from '@nestjs/common';
 import { TripsService } from './trips.service.js';
 import { CreateTripDto } from './dto/create-trip.dto.js';
 import { GenerateTripsDto } from './dto/generate-trips.dto.js';
+import { AssignBusDto } from './dto/assign-bus.dto.js';
 import { AuthGuard } from '../../identity/auth/common/guards/auth.guard.js';
 import { RoleGuard } from '../../common/guards/role.guard.js';
 import { Roles } from '../../common/decorators/roles-user.decorator.js';
@@ -23,5 +24,12 @@ export class TripsController {
   @Post('generate')
   generate(@Body() dto: GenerateTripsDto) {
     return this.tripsService.generate(dto);
+  }
+
+  @UseGuards(AuthGuard, RoleGuard)
+  @Roles(UserRole.ADMIN, UserRole.OPERATOR)
+  @Patch(':id/bus')
+  assignBus(@Param('id', ParseIntPipe) id: number, @Body() dto: AssignBusDto) {
+    return this.tripsService.assignBus(id, dto.busId);
   }
 }
