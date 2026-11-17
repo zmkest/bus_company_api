@@ -111,6 +111,7 @@
   - [ ] Get trip by id (includes route, bus, crew, seats left)
   - [ ] Update trip (reschedule, change bus or price) only if `SCHEDULED`
   - [x] Validate bus availability (status `AVAILABLE` and no overlapping trips, considering route duration)
+  - [x] Rotations: weekly bus cycle over frequencies, auto-assign bus on generate, change rotation bus (`applyFrom`)
   - [ ] Start trip (`IN_PROGRESS`, set `actualDeparture`, bus → `ON_ROUTE`, save history)
   - [ ] Complete trip (`COMPLETED`, set `actualArrival`, bus → `AVAILABLE`, update `odometerKm` with route distance)
   - [ ] Cancel trip (`CANCELLED`, cancel tickets, refund payments, free bus)

@@ -6,7 +6,16 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service.js';
 import { Prisma } from '../../generated/prisma/client.js';
-import { TripStatus } from '../../generated/prisma/enums.js';
+import { BusStatus, TripStatus } from '../../generated/prisma/enums.js';
+import { DateTime } from 'luxon';
+import { UnassignedCode, UnassignedReason } from './bus-assignment/assignment-conflict.js';
+import { label, TerminalLabel, terminalLabelSelect } from './bus-assignment/assignment-messages.js';
+import {
+  BusCandidate,
+  LabeledRoute,
+  planBusAssignments,
+  TimelineTrip,
+} from './bus-assignment/bus-schedule.planner.js';
 import { envs } from '../../config/envs.js';
 import { CreateTripDto } from './dto/create-trip.dto.js';
 import { GenerateTripsDto } from './dto/generate-trips.dto.js';
@@ -28,6 +37,48 @@ const terminalSelect = {
 
 // La base es remota: margen para transacciones con varias consultas
 const TX_OPTIONS = { timeout: 15_000 } as const;
+const GENERATE_TX_OPTIONS = { timeout: 30_000 } as const;
+
+const labeledRouteSelect = {
+  originId: true,
+  destinationId: true,
+  durationMinutes: true,
+  origin: terminalLabelSelect,
+  destination: terminalLabelSelect,
+} as const;
+
+const toLabeledRoute = (route: {
+  originId: number;
+  destinationId: number;
+  origin: TerminalLabel;
+  destination: TerminalLabel;
+}): LabeledRoute => ({
+  originId: route.originId,
+  destinationId: route.destinationId,
+  originLabel: label(route.origin),
+  destinationLabel: label(route.destination),
+});
+
+const tripKey = (frequencyId: number, departure: Date) => `${frequencyId}:${departure.getTime()}`;
+
+interface Candidate {
+  key: string;
+  route: LabeledRoute;
+  rotation?: { id: number; bus: { id: number; plate: string; status: BusStatus } | null };
+  data: Prisma.TripCreateManyInput & { busId: number | null };
+}
+
+export interface GeneratedUnassigned extends UnassignedReason {
+  frequencyId: number;
+  scheduledDeparture: Date;
+}
+
+export interface GenerateTripsResult {
+  created: number;
+  skipped: number;
+  assigned: number;
+  unassigned: GeneratedUnassigned[];
+}
 
 const tripInclude = {
   route: { select: { id: true, origin: terminalSelect, destination: terminalSelect } },
@@ -128,7 +179,7 @@ export class TripsService {
     return paginate(items, total, page, limit);
   }
 
-  async generate(dto: GenerateTripsDto) {
+  async generate(dto: GenerateTripsDto): Promise<GenerateTripsResult> {
     const zone = envs.app_timezone;
     const from = parseLocalDate(dto.from, zone);
     const to = parseLocalDate(dto.to, zone);
@@ -147,31 +198,249 @@ export class TripsService {
         departureTime: true,
         weekdays: true,
         basePrice: true,
-        route: { select: { durationMinutes: true } },
+        route: { select: labeledRouteSelect },
+        rotationLegs: {
+          select: {
+            weekday: true,
+            rotation: {
+              select: {
+                id: true,
+                isActive: true,
+                bus: { select: { id: true, plate: true, status: true } },
+              },
+            },
+          },
+        },
       },
     });
 
-    const data: Prisma.TripCreateManyInput[] = frequencies.flatMap((f) =>
-      buildDepartures(f.departureTime, f.weekdays, from, to).map((scheduledDeparture) => {
-        const scheduledArrival = addMinutes(scheduledDeparture, f.route.durationMinutes);
-        return {
-          routeId: f.routeId,
-          frequencyId: f.id,
-          busId: null,
-          scheduledDeparture,
-          scheduledArrival,
-          estimatedArrival: scheduledArrival,
-          durationMinutes: f.route.durationMinutes,
-          price: f.basePrice,
-        };
-      }),
+    const candidates: Candidate[] = frequencies.flatMap((f) => {
+      const route = toLabeledRoute(f.route);
+      return buildDepartures(f.departureTime, f.weekdays, from, to).map(
+        ({ scheduledDeparture, weekday }) => {
+          const scheduledArrival = addMinutes(scheduledDeparture, f.route.durationMinutes);
+          const rotation = f.rotationLegs.find((l) => l.weekday === weekday)?.rotation;
+          return {
+            key: tripKey(f.id, scheduledDeparture),
+            route,
+            rotation: rotation?.isActive ? rotation : undefined,
+            data: {
+              routeId: f.routeId,
+              frequencyId: f.id,
+              busId: null,
+              rotationId: rotation?.isActive ? rotation.id : null,
+              scheduledDeparture,
+              scheduledArrival,
+              estimatedArrival: scheduledArrival,
+              durationMinutes: f.route.durationMinutes,
+              price: f.basePrice,
+            },
+          };
+        },
+      );
+    });
+
+    if (candidates.length === 0) return { created: 0, skipped: 0, assigned: 0, unassigned: [] };
+
+    return this.prisma
+      .$transaction((tx) => this.insertCandidates(tx, candidates, from, to), GENERATE_TX_OPTIONS)
+      .catch(rethrowBusOverlap);
+  }
+
+  /**
+   * createMany({ skipDuplicates }) usa ON CONFLICT DO NOTHING sin target, que también ignora
+   * la exclusion constraint. Por eso los duplicados se descartan antes, los buses se validan
+   * en memoria y lo que la base no inserte se revisa después.
+   */
+  private async insertCandidates(
+    tx: Prisma.TransactionClient,
+    all: Candidate[],
+    from: DateTime,
+    to: DateTime,
+  ): Promise<GenerateTripsResult> {
+    const busIds = [
+      ...new Set(all.flatMap((c) => (c.rotation?.bus ? [c.rotation.bus.id] : []))),
+    ].sort((a, b) => a - b);
+
+    if (busIds.length > 0) {
+      await tx.$queryRaw`SELECT id FROM "Bus" WHERE id IN (${Prisma.join(busIds)}) ORDER BY id FOR UPDATE`;
+    }
+
+    const existingKeys = await this.findExistingKeys(
+      tx,
+      all.map((c) => c.data),
+      from.toJSDate(),
+      to.plus({ days: 1 }).toJSDate(),
     );
+    const candidates = all.filter((c) => !existingKeys.has(c.key));
+    let skipped = all.length - candidates.length;
 
-    if (data.length === 0) return { created: 0, skipped: 0 };
+    const unassigned: GeneratedUnassigned[] = [];
+    const report = (c: Candidate, reason: UnassignedReason) =>
+      unassigned.push({
+        frequencyId: c.data.frequencyId!,
+        scheduledDeparture: c.data.scheduledDeparture as Date,
+        ...reason,
+      });
 
-    const { count } = await this.prisma.trip.createMany({ data, skipDuplicates: true });
+    const withBus: (Candidate & BusCandidate)[] = [];
+    for (const c of candidates) {
+      const rotation = c.rotation;
+      if (!rotation) continue;
+      if (!rotation.bus) {
+        report(c, {
+          code: UnassignedCode.ROTATION_NO_BUS,
+          message: `La rotación #${rotation.id} no tiene bus asignado`,
+        });
+      } else if (rotation.bus.status === BusStatus.OUT_OF_SERVICE) {
+        report(c, {
+          code: UnassignedCode.BUS_OUT_OF_SERVICE,
+          message: `El bus ${rotation.bus.plate} está fuera de servicio`,
+        });
+      } else {
+        withBus.push({
+          ...c,
+          bus: rotation.bus,
+          scheduledDeparture: c.data.scheduledDeparture as Date,
+          scheduledArrival: c.data.scheduledArrival as Date,
+        });
+      }
+    }
 
-    return { created: count, skipped: data.length - count };
+    const plan = planBusAssignments(
+      withBus,
+      await this.loadBusTimelines(tx, busIds, from, to),
+      envs.turnaround_minutes,
+    );
+    plan.accepted.forEach((c) => (c.data.busId = c.bus.id));
+    plan.rejected.forEach(({ candidate, reason }) => report(candidate, reason));
+
+    const sent = candidates.map((c) => c.data);
+    const inserted = await tx.trip.createManyAndReturn({
+      data: sent,
+      skipDuplicates: true,
+      select: { frequencyId: true, scheduledDeparture: true, busId: true },
+    });
+
+    if (inserted.length < sent.length) {
+      const insertedKeys = new Set(
+        inserted.map((t) => tripKey(t.frequencyId!, t.scheduledDeparture)),
+      );
+      const missing = candidates.filter((c) => !insertedKeys.has(c.key));
+      const concurrent = await this.findExistingKeys(
+        tx,
+        missing.map((c) => c.data),
+        from.toJSDate(),
+        to.plus({ days: 1 }).toJSDate(),
+      );
+
+      const retry = missing.filter((c) => !concurrent.has(c.key));
+      skipped += missing.length - retry.length;
+
+      if (retry.length > 0) {
+        retry.forEach((c) => {
+          if (c.data.busId !== null) {
+            report(c, {
+              code: UnassignedCode.DB_CONFLICT,
+              message: 'La base rechazó la asignación por un choque de horario del bus',
+            });
+          }
+          c.data.busId = null;
+        });
+        const again = await tx.trip.createManyAndReturn({
+          data: retry.map((c) => c.data),
+          skipDuplicates: true,
+          select: { frequencyId: true, scheduledDeparture: true, busId: true },
+        });
+        skipped += retry.length - again.length;
+        inserted.push(...again);
+      }
+    }
+
+    unassigned.sort((a, b) => a.scheduledDeparture.getTime() - b.scheduledDeparture.getTime());
+
+    return {
+      created: inserted.length,
+      skipped,
+      assigned: inserted.filter((t) => t.busId !== null).length,
+      unassigned,
+    };
+  }
+
+  private async findExistingKeys(
+    tx: Prisma.TransactionClient,
+    data: Prisma.TripCreateManyInput[],
+    from: Date,
+    to: Date,
+  ) {
+    if (data.length === 0) return new Set<string>();
+
+    const existing = await tx.trip.findMany({
+      where: {
+        frequencyId: { in: [...new Set(data.map((d) => d.frequencyId!))] },
+        scheduledDeparture: { gte: from, lt: to },
+      },
+      select: { frequencyId: true, scheduledDeparture: true },
+    });
+
+    return new Set(existing.map((t) => tripKey(t.frequencyId!, t.scheduledDeparture)));
+  }
+
+  /** Viajes no cancelados de cada bus alrededor del rango, más el vecino inmediato en cada borde */
+  private async loadBusTimelines(
+    tx: Prisma.TransactionClient,
+    busIds: number[],
+    from: DateTime,
+    to: DateTime,
+  ) {
+    const timelines = new Map<number, TimelineTrip[]>();
+    if (busIds.length === 0) return timelines;
+
+    const start = from.minus({ days: 1 }).toJSDate();
+    const end = to.plus({ days: 2 }).toJSDate();
+    const select = {
+      id: true,
+      busId: true,
+      status: true,
+      scheduledDeparture: true,
+      scheduledArrival: true,
+      route: { select: labeledRouteSelect },
+    } as const;
+    const active = { not: TripStatus.CANCELLED };
+
+    const trips = await tx.trip.findMany({
+      where: {
+        busId: { in: busIds },
+        status: active,
+        scheduledDeparture: { gte: start, lt: end },
+      },
+      select,
+    });
+
+    // Secuencial: dentro de una transacción las consultas comparten la misma conexión
+    for (const busId of busIds) {
+      const previous = await tx.trip.findFirst({
+        where: { busId, status: active, scheduledDeparture: { lt: start } },
+        orderBy: { scheduledDeparture: 'desc' },
+        select,
+      });
+      const next = await tx.trip.findFirst({
+        where: { busId, status: active, scheduledDeparture: { gte: end } },
+        orderBy: { scheduledDeparture: 'asc' },
+        select,
+      });
+      if (previous) trips.push(previous);
+      if (next) trips.push(next);
+    }
+
+    for (const trip of trips) {
+      if (!trip.busId) continue;
+      const list = timelines.get(trip.busId) ?? [];
+      list.push({ ...trip, route: toLabeledRoute(trip.route) });
+      timelines.set(trip.busId, list);
+    }
+
+    return timelines;
   }
 
   async assignBus(id: number, busId: number | null) {

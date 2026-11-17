@@ -59,6 +59,7 @@ model Bus {
   trips         Trip[]
   maintenances  Maintenance[]
   statusHistory BusStatusHistory[]
+  rotations     Rotation[]
 
   @@index([createdAt])
 }
@@ -177,10 +178,40 @@ model Frequency {
   basePrice     Decimal   @db.Decimal(10, 2)
   isActive      Boolean   @default(true)
 
-  route Route  @relation(fields: [routeId], references: [id], onDelete: Restrict)
-  trips Trip[]
+  route        Route         @relation(fields: [routeId], references: [id], onDelete: Restrict)
+  trips        Trip[]
+  rotationLegs RotationLeg[]
 
   @@index([routeId])
+}
+
+/// Recorrido semanal de un bus: encadena frecuencias por día formando un ciclo cerrado
+model Rotation {
+  id        Int      @id @default(autoincrement())
+  name      String
+  busId     Int?
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  bus   Bus?          @relation(fields: [busId], references: [id], onDelete: SetNull)
+  legs  RotationLeg[]
+  trips Trip[]
+
+  @@index([busId])
+}
+
+model RotationLeg {
+  id          Int     @id @default(autoincrement())
+  rotationId  Int
+  frequencyId Int
+  weekday     Weekday
+
+  rotation  Rotation  @relation(fields: [rotationId], references: [id], onDelete: Cascade)
+  frequency Frequency @relation(fields: [frequencyId], references: [id], onDelete: Cascade)
+
+  @@unique([frequencyId, weekday])
+  @@index([rotationId])
 }
 
 // ───────────────────────── Viajes ─────────────────────────
@@ -197,6 +228,7 @@ model Trip {
   routeId            Int
   frequencyId        Int?
   busId              Int?
+  rotationId         Int?
   scheduledDeparture DateTime
   scheduledArrival   DateTime
   estimatedArrival   DateTime
@@ -211,6 +243,7 @@ model Trip {
   route     Route      @relation(fields: [routeId], references: [id], onDelete: Restrict)
   frequency Frequency? @relation(fields: [frequencyId], references: [id], onDelete: SetNull)
   bus       Bus?       @relation(fields: [busId], references: [id], onDelete: Restrict)
+  rotation  Rotation?  @relation(fields: [rotationId], references: [id], onDelete: SetNull)
   crew      TripCrew[]
   tickets   Ticket[]
 
@@ -218,6 +251,7 @@ model Trip {
   @@index([busId, scheduledDeparture])
   @@index([status, scheduledDeparture])
   @@index([routeId, scheduledDeparture])
+  @@index([rotationId, scheduledDeparture])
 }
 
 // ───────────────────────── Tripulación ─────────────────────────
