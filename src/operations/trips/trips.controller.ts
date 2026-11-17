@@ -14,6 +14,7 @@ import { CreateTripDto } from './dto/create-trip.dto.js';
 import { GenerateTripsDto } from './dto/generate-trips.dto.js';
 import { AssignBusDto } from './dto/assign-bus.dto.js';
 import { FindTripsQueryDto } from './dto/find-trips-query.dto.js';
+import { SearchTripsQueryDto } from './dto/search-trips-query.dto.js';
 import { AuthGuard } from '../../identity/auth/common/guards/auth.guard.js';
 import { RoleGuard } from '../../common/guards/role.guard.js';
 import { Roles } from '../../common/decorators/roles-user.decorator.js';
@@ -35,6 +36,11 @@ export class TripsController {
   @Get()
   findAll(@Query() query: FindTripsQueryDto) {
     return this.tripsService.findAll(query);
+  }
+
+  @Get('search')
+  search(@Query() query: SearchTripsQueryDto) {
+    return this.tripsService.search(query);
   }
 
   @UseGuards(AuthGuard, RoleGuard)

@@ -30,9 +30,20 @@ import { BusAssignmentService } from './bus-assignment/bus-assignment.service.js
 import { rethrowBusOverlap } from './common/prisma-errors.util.js';
 import { FindTripsQueryDto } from './dto/find-trips-query.dto.js';
 import { paginate } from '../../common/interfaces/paginated.js';
+import { SearchTripsQueryDto } from './dto/search-trips-query.dto.js';
+import { seatCountsSelect, seatsLeft } from './common/seats.util.js';
 
 const terminalSelect = {
   select: { id: true, name: true, city: { select: { id: true, name: true } } },
+} as const;
+
+const publicTerminalSelect = {
+  select: {
+    id: true,
+    name: true,
+    address: true,
+    city: { select: { id: true, name: true } },
+  },
 } as const;
 
 // La base es remota: margen para transacciones con varias consultas
@@ -177,6 +188,57 @@ export class TripsService {
     ]);
 
     return paginate(items, total, page, limit);
+  }
+
+  /** Búsqueda pública: viajes programados con bus y asientos libres en una fecha local */
+  async search({ originCityId, destinationCityId, date }: SearchTripsQueryDto) {
+    if (originCityId === destinationCityId) {
+      throw new BadRequestException('La ciudad de origen y destino no pueden ser la misma');
+    }
+
+    const zone = envs.app_timezone;
+    const day = parseLocalDate(date, zone);
+    if (!day.isValid) throw new BadRequestException('date: Debe ser una fecha válida (YYYY-MM-DD)');
+    if (day < todayIn(zone)) throw new BadRequestException('date: No puede ser anterior a hoy');
+
+    const now = new Date();
+    const dayStart = day.toJSDate();
+
+    const trips = await this.prisma.trip.findMany({
+      where: {
+        status: TripStatus.SCHEDULED,
+        busId: { not: null },
+        route: {
+          origin: { cityId: originCityId },
+          destination: { cityId: destinationCityId },
+        },
+        scheduledDeparture: {
+          gte: dayStart > now ? dayStart : now,
+          lt: day.plus({ days: 1 }).toJSDate(),
+        },
+      },
+      select: {
+        id: true,
+        scheduledDeparture: true,
+        scheduledArrival: true,
+        durationMinutes: true,
+        price: true,
+        route: {
+          select: {
+            id: true,
+            distanceKm: true,
+            origin: publicTerminalSelect,
+            destination: publicTerminalSelect,
+          },
+        },
+        ...seatCountsSelect(now),
+      },
+      orderBy: [{ scheduledDeparture: 'asc' }, { id: 'asc' }],
+    });
+
+    return trips
+      .map(({ bus, _count, ...trip }) => ({ ...trip, seatsLeft: seatsLeft({ bus, _count }) ?? 0 }))
+      .filter((trip) => trip.seatsLeft > 0);
   }
 
   async generate(dto: GenerateTripsDto): Promise<GenerateTripsResult> {
