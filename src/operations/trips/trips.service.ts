@@ -34,7 +34,13 @@ import { rethrowBusOverlap } from './common/prisma-errors.util.js';
 import { FindTripsQueryDto } from './dto/find-trips-query.dto.js';
 import { paginate } from '../../common/interfaces/paginated.js';
 import { SearchTripsQueryDto } from './dto/search-trips-query.dto.js';
-import { occupyingTicketWhere, seatCountsSelect, seatsLeft } from './common/seats.util.js';
+import {
+  occupyingTicketWhere,
+  SeatMapStatus,
+  seatCountsSelect,
+  seatMapStatus,
+  seatsLeft,
+} from './common/seats.util.js';
 
 const terminalSelect = {
   select: { id: true, name: true, city: { select: { id: true, name: true } } },
@@ -293,6 +299,45 @@ export class TripsService {
     return trips
       .map(({ bus, _count, ...trip }) => ({ ...trip, seatsLeft: seatsLeft({ bus, _count }) ?? 0 }))
       .filter((trip) => trip.seatsLeft > 0);
+  }
+
+  /** Mapa de asientos público de un viaje vendible, sin datos de pasajeros */
+  async seatMap(id: number) {
+    const now = new Date();
+    const trip = await this.prisma.trip.findFirst({
+      where: {
+        id,
+        status: TripStatus.SCHEDULED,
+        busId: { not: null },
+        scheduledDeparture: { gt: now },
+      },
+      select: {
+        id: true,
+        bus: {
+          select: {
+            seats: {
+              select: { id: true, number: true, isOperational: true },
+              orderBy: { number: 'asc' },
+            },
+          },
+        },
+        tickets: { where: occupyingTicketWhere(now), select: { seatId: true, status: true } },
+      },
+    });
+    if (!trip?.bus)
+      throw new NotFoundException(`Viaje con id #${id} no existe o no está disponible`);
+
+    const ticketBySeat = new Map(trip.tickets.map((t) => [t.seatId, t.status]));
+    const seats = trip.bus.seats.map((seat) => ({
+      number: seat.number,
+      status: seatMapStatus(seat.isOperational, ticketBySeat.get(seat.id)),
+    }));
+
+    return {
+      tripId: trip.id,
+      seatsLeft: seats.filter((seat) => seat.status === SeatMapStatus.FREE).length,
+      seats,
+    };
   }
 
   async generate(dto: GenerateTripsDto): Promise<GenerateTripsResult> {

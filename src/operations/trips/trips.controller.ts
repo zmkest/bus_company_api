@@ -46,6 +46,11 @@ export class TripsController {
     return this.tripsService.search(query);
   }
 
+  @Get(':id/seats')
+  seatMap(@Param('id', ParseIntPipe) id: number) {
+    return this.tripsService.seatMap(id);
+  }
+
   @UseGuards(AuthGuard, RoleGuard)
   @Roles(UserRole.ADMIN, UserRole.OPERATOR)
   @Get(':id')
