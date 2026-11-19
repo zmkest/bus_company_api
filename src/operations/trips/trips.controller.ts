@@ -13,6 +13,7 @@ import { TripsService } from './trips.service.js';
 import { CreateTripDto } from './dto/create-trip.dto.js';
 import { GenerateTripsDto } from './dto/generate-trips.dto.js';
 import { AssignBusDto } from './dto/assign-bus.dto.js';
+import { UpdateTripDto } from './dto/update-trip.dto.js';
 import { FindTripsQueryDto } from './dto/find-trips-query.dto.js';
 import { SearchTripsQueryDto } from './dto/search-trips-query.dto.js';
 import { AuthGuard } from '../../identity/auth/common/guards/auth.guard.js';
@@ -55,6 +56,13 @@ export class TripsController {
   @Post('generate')
   generate(@Body() dto: GenerateTripsDto) {
     return this.tripsService.generate(dto);
+  }
+
+  @UseGuards(AuthGuard, RoleGuard)
+  @Roles(UserRole.ADMIN, UserRole.OPERATOR)
+  @Patch(':id')
+  update(@Param('id', ParseIntPipe) id: number, @Body() dto: UpdateTripDto) {
+    return this.tripsService.update(id, dto);
   }
 
   @UseGuards(AuthGuard, RoleGuard)
