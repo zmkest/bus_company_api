@@ -108,7 +108,7 @@
   - [x] Generate trips from frequencies (date range, skips existing: `frequencyId + scheduledDeparture`)
   - [x] Get trips (paginated, filter by route, bus plate, status, date range)
   - [x] Search available trips (public: origin, destination, date, seats left)
-  - [ ] Get trip by id (includes route, bus, crew, seats left)
+  - [x] Get trip by id (includes route, bus, crew, seats left)
   - [ ] Update trip (reschedule, change bus or price) only if `SCHEDULED`
   - [x] Validate bus availability (status `AVAILABLE` and no overlapping trips, considering route duration)
   - [x] Rotations: weekly bus cycle over frequencies, auto-assign bus on generate, change rotation bus (`applyFrom`)

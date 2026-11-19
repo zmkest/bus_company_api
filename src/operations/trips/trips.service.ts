@@ -31,7 +31,7 @@ import { rethrowBusOverlap } from './common/prisma-errors.util.js';
 import { FindTripsQueryDto } from './dto/find-trips-query.dto.js';
 import { paginate } from '../../common/interfaces/paginated.js';
 import { SearchTripsQueryDto } from './dto/search-trips-query.dto.js';
-import { seatCountsSelect, seatsLeft } from './common/seats.util.js';
+import { occupyingTicketWhere, seatCountsSelect, seatsLeft } from './common/seats.util.js';
 
 const terminalSelect = {
   select: { id: true, name: true, city: { select: { id: true, name: true } } },
@@ -188,6 +188,54 @@ export class TripsService {
     ]);
 
     return paginate(items, total, page, limit);
+  }
+
+  async findOne(id: number) {
+    const now = new Date();
+    const trip = await this.prisma.trip.findUnique({
+      where: { id },
+      include: {
+        route: {
+          select: {
+            id: true,
+            distanceKm: true,
+            durationMinutes: true,
+            origin: terminalSelect,
+            destination: terminalSelect,
+          },
+        },
+        bus: {
+          select: {
+            id: true,
+            plate: true,
+            model: true,
+            status: true,
+            _count: { select: { seats: { where: { isOperational: true } } } },
+          },
+        },
+        rotation: { select: { id: true, name: true } },
+        crew: {
+          select: {
+            crewMember: {
+              select: { id: true, document: true, name: true, position: true, status: true },
+            },
+          },
+          orderBy: { crewMember: { position: 'asc' } },
+        },
+        _count: { select: { tickets: { where: occupyingTicketWhere(now) } } },
+      },
+    });
+
+    if (!trip) throw new NotFoundException(`Viaje con id #${id} no existe`);
+
+    const { bus, crew, _count, ...rest } = trip;
+    return {
+      ...rest,
+      bus: bus && { id: bus.id, plate: bus.plate, model: bus.model, status: bus.status },
+      crew: crew.map((c) => c.crewMember),
+      totalSeats: bus?._count.seats ?? null,
+      seatsLeft: seatsLeft({ bus, _count }),
+    };
   }
 
   /** Búsqueda pública: viajes programados con bus y asientos libres en una fecha local */

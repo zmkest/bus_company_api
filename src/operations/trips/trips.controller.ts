@@ -45,6 +45,13 @@ export class TripsController {
 
   @UseGuards(AuthGuard, RoleGuard)
   @Roles(UserRole.ADMIN, UserRole.OPERATOR)
+  @Get(':id')
+  findOne(@Param('id', ParseIntPipe) id: number) {
+    return this.tripsService.findOne(id);
+  }
+
+  @UseGuards(AuthGuard, RoleGuard)
+  @Roles(UserRole.ADMIN, UserRole.OPERATOR)
   @Post('generate')
   generate(@Body() dto: GenerateTripsDto) {
     return this.tripsService.generate(dto);
