@@ -1,12 +1,14 @@
 import {
   BadRequestException,
   ConflictException,
+  ForbiddenException,
   Injectable,
   NotFoundException,
+  UnprocessableEntityException,
 } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service.js';
 import { Prisma } from '../../generated/prisma/client.js';
-import { BusStatus, TripStatus } from '../../generated/prisma/enums.js';
+import { BusStatus, TripStatus, UserRole } from '../../generated/prisma/enums.js';
 import { DateTime } from 'luxon';
 import { UnassignedCode, UnassignedReason } from './bus-assignment/assignment-conflict.js';
 import { label, TerminalLabel, terminalLabelSelect } from './bus-assignment/assignment-messages.js';
@@ -50,6 +52,9 @@ const publicTerminalSelect = {
 // La base es remota: margen para transacciones con varias consultas
 const TX_OPTIONS = { timeout: 15_000 } as const;
 const GENERATE_TX_OPTIONS = { timeout: 30_000 } as const;
+
+// Antelación máxima con la que se puede iniciar un viaje respecto a su salida programada
+const START_WINDOW_MINUTES = 60;
 
 const labeledRouteSelect = {
   originId: true,
@@ -638,5 +643,75 @@ export class TripsService {
       }, TX_OPTIONS)
       .catch(rethrowBusOverlap)
       .then(() => this.prisma.trip.findUniqueOrThrow({ where: { id }, include: tripInclude }));
+  }
+
+  /** Inicia un viaje SCHEDULED: IN_PROGRESS, salida real ahora y bus ON_ROUTE con historial */
+  async start(id: number, userId: number, role: UserRole) {
+    return this.prisma
+      .$transaction(async (tx) => {
+        const trip = await tx.trip.findUnique({
+          where: { id },
+          select: {
+            id: true,
+            status: true,
+            busId: true,
+            scheduledDeparture: true,
+            durationMinutes: true,
+            crew: { select: { crewMember: { select: { userId: true } } } },
+          },
+        });
+
+        if (!trip) throw new NotFoundException(`Viaje con id #${id} no existe`);
+        if (role === UserRole.DRIVER && !trip.crew.some((c) => c.crewMember.userId === userId)) {
+          throw new ForbiddenException('No estás asignado a este viaje');
+        }
+        if (trip.status !== TripStatus.SCHEDULED) {
+          throw new ConflictException(
+            `Solo se puede iniciar un viaje SCHEDULED (estado actual: ${trip.status})`,
+          );
+        }
+        if (trip.busId === null) {
+          throw new ConflictException('El viaje no tiene bus asignado');
+        }
+
+        const now = new Date();
+        if (now < addMinutes(trip.scheduledDeparture, -START_WINDOW_MINUTES)) {
+          throw new UnprocessableEntityException(
+            `Solo se puede iniciar el viaje desde ${START_WINDOW_MINUTES} minutos antes de su salida programada`,
+          );
+        }
+
+        const [bus] = await tx.$queryRaw<{ plate: string; status: BusStatus }[]>`
+          SELECT plate, status FROM "Bus" WHERE id = ${trip.busId} FOR UPDATE`;
+        if (bus.status !== BusStatus.AVAILABLE) {
+          throw new ConflictException(
+            `El bus ${bus.plate} no está disponible (estado actual: ${bus.status})`,
+          );
+        }
+
+        const { count } = await tx.trip.updateMany({
+          where: { id, status: TripStatus.SCHEDULED },
+          data: {
+            status: TripStatus.IN_PROGRESS,
+            actualDeparture: now,
+            estimatedArrival: addMinutes(now, trip.durationMinutes),
+          },
+        });
+        if (count === 0) {
+          throw new ConflictException('El estado del viaje cambió, intenta de nuevo');
+        }
+
+        await tx.bus.update({ where: { id: trip.busId }, data: { status: BusStatus.ON_ROUTE } });
+        await tx.busStatusHistory.create({
+          data: {
+            busId: trip.busId,
+            fromStatus: BusStatus.AVAILABLE,
+            toStatus: BusStatus.ON_ROUTE,
+            changedById: userId,
+            reason: `Inicio del viaje #${id}`,
+          },
+        });
+      }, TX_OPTIONS)
+      .then(() => this.findOne(id));
   }
 }
