@@ -29,17 +29,42 @@ REST API to manage an interprovincial bus company: fleet, routes and schedules, 
 - **Payments**: cash, card and transfer payments, confirmation and refunds.
 - **Reports**: sales, occupancy, profitable routes, fleet status and maintenance costs.
 
-> Detailed feature checklist and progress: [docs/FEATURES.md](docs/FEATURES.md)
+> Detailed feature checklist and progress: [docs/Features .md](<docs/Features .md>)
 
 ## Roles
 
-| Role        | Description                                         |
-| ----------- | --------------------------------------------------- |
-| `ADMIN`     | Full access: users, fleet, network, reports         |
-| `OPERATOR`  | Manages trips, crew assignment and fleet operations |
-| `SELLER`    | Sells and cancels tickets, registers payments       |
-| `DRIVER`    | Views assigned trips, starts and completes them     |
-| `PASSENGER` | Searches trips, buys and views own tickets          |
+| Role        | Description                                                                     |
+| ----------- | ------------------------------------------------------------------------------- |
+| `ADMIN`     | Full access: users, master data (fleet, network, pricing), refunds and reports  |
+| `OPERATOR`  | Daily operations: trips, rotations, crew assignment, bus status and maintenance |
+| `SELLER`    | Counter sales: passengers, tickets, payments and own cash closing               |
+| `DRIVER`    | Own assigned trips: start / complete, passenger manifest and boarding           |
+| `PASSENGER` | Searches trips, buys and manages own tickets and payments                       |
+
+Some endpoints are `Public` (no authentication: register, login, trip search, cities) and some features are `System` rules or scheduled jobs without an endpoint of their own.
+
+### Permissions matrix
+
+| Module               | `ADMIN` | `OPERATOR` | `SELLER` | `DRIVER` | `PASSENGER` |
+| -------------------- | ------- | ---------- | -------- | -------- | ----------- |
+| Users                | Full    | —          | —        | —        | —           |
+| Buses and seats      | Full    | Operate    | Read     | —        | —           |
+| Maintenance          | Full    | Operate    | —        | —        | —           |
+| Terminals and routes | Full    | Read       | Read     | —        | —           |
+| Frequencies          | Full    | Read       | —        | —        | —           |
+| Trips and rotations  | Full    | Full       | Read     | Own      | —           |
+| Crew                 | Full    | Operate    | —        | Own      | —           |
+| Passengers           | Full    | —          | Full     | —        | Own         |
+| Tickets              | Full    | Board      | Full     | Board    | Own         |
+| Payments             | Full    | —          | Own      | —        | Own         |
+| Reports              | Full    | Operations | —        | —        | —           |
+
+- **Full**: create, read, update and delete. **Read**: query only.
+- **Operate**: daily operations without changing master data (status, assignments, maintenance).
+- **Own**: only over their own resources. **Board**: validate and board tickets.
+- **Operations**: operational reports only (trips and delays, fleet status, maintenance cost).
+
+Detailed role per endpoint: [docs/Features .md](<docs/Features .md>)
 
 ## Tech Stack
 
@@ -155,7 +180,7 @@ pnpm start:dev
 
 ## Documentation
 
-- [Feature checklist](docs/FEATURES.md): progress by module
+- [Feature checklist](<docs/Features .md>): progress by module
 - [Solved problems](docs/tickets.md): practical cases and solutions
 
 ## License
