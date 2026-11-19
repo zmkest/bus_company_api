@@ -123,11 +123,11 @@
   - [x] Rotations: weekly bus cycle over frequencies, auto-assign bus on generate, change rotation bus (`applyFrom`) — `ADMIN` `OPERATOR`
   - [x] Start trip (`IN_PROGRESS`, set `actualDeparture`, bus → `ON_ROUTE`, save history) — `ADMIN` `OPERATOR` `DRIVER (own)`
   - [x] Complete trip (`COMPLETED`, set `actualArrival`, bus → `AVAILABLE`, update `odometerKm` with route distance) — `ADMIN` `OPERATOR` `DRIVER (own)`
-  - [ ] Cancel trip (`CANCELLED`, cancel tickets, refund payments, free bus) — `ADMIN` `OPERATOR`
-  - [ ] Get seat map of a trip (seat number + status: free / reserved / sold, no passenger data) — `Public`
+  - [x] Get seat map of a trip (seat number + status: free / reserved / sold, no passenger data) — `Public`
   - [ ] Get passenger manifest of a trip (boarding list) — `ADMIN` `OPERATOR` `DRIVER (own)`
   - [ ] Count trips by status — `ADMIN` `OPERATOR`
   - [ ] Get my assigned trips — `DRIVER`
+  - [ ] Cancel trip (`CANCELLED`, cancel tickets, refund payments, free bus) — `ADMIN` `OPERATOR`
 
 - [ ] **Crew**
   - [ ] Create crew member (document, name, position, license; optional link to user) — `ADMIN`
