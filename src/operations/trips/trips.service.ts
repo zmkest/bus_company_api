@@ -19,6 +19,7 @@ import {
 import { envs } from '../../config/envs.js';
 import { CreateTripDto } from './dto/create-trip.dto.js';
 import { GenerateTripsDto } from './dto/generate-trips.dto.js';
+import { UpdateTripDto } from './dto/update-trip.dto.js';
 import {
   addMinutes,
   assertGenerationRange,
@@ -553,7 +554,20 @@ export class TripsService {
     return timelines;
   }
 
-  async assignBus(id: number, busId: number | null) {
+  assignBus(id: number, busId: number | null) {
+    return this.update(id, { busId });
+  }
+
+  /** Reprograma, cambia el bus o el precio de un viaje SCHEDULED */
+  async update(id: number, dto: UpdateTripDto) {
+    const { scheduledDeparture, busId, price } = dto;
+
+    if (scheduledDeparture === undefined && busId === undefined && price === undefined) {
+      throw new BadRequestException(
+        'Debe enviar scheduledDeparture, busId o price para actualizar',
+      );
+    }
+
     return this.prisma
       .$transaction(async (tx) => {
         const trip = await tx.trip.findUnique({
@@ -561,8 +575,10 @@ export class TripsService {
           select: {
             id: true,
             status: true,
+            busId: true,
+            frequencyId: true,
             scheduledDeparture: true,
-            scheduledArrival: true,
+            durationMinutes: true,
             route: { select: { originId: true, destinationId: true } },
           },
         });
@@ -570,14 +586,55 @@ export class TripsService {
         if (!trip) throw new NotFoundException(`Viaje con id #${id} no existe`);
         if (trip.status !== TripStatus.SCHEDULED) {
           throw new ConflictException(
-            `Solo se puede cambiar el bus de un viaje SCHEDULED (estado actual: ${trip.status})`,
+            `Solo se puede modificar un viaje SCHEDULED (estado actual: ${trip.status})`,
           );
         }
 
-        if (busId !== null) await this.busAssignment.assertCanAssign(tx, busId, trip);
+        const rescheduled =
+          scheduledDeparture !== undefined &&
+          scheduledDeparture.getTime() !== trip.scheduledDeparture.getTime();
+        const departure = rescheduled ? scheduledDeparture : trip.scheduledDeparture;
+        const arrival = addMinutes(departure, trip.durationMinutes);
+        const targetBusId = busId === undefined ? trip.busId : busId;
+
+        if (rescheduled && trip.frequencyId !== null) {
+          const duplicate = await tx.trip.findFirst({
+            where: {
+              frequencyId: trip.frequencyId,
+              scheduledDeparture: departure,
+              id: { not: id },
+            },
+            select: { id: true },
+          });
+          if (duplicate) {
+            throw new ConflictException(
+              `Ya existe el viaje #${duplicate.id} de la misma frecuencia con esa salida`,
+            );
+          }
+        }
+
+        if (targetBusId !== null && (rescheduled || targetBusId !== trip.busId)) {
+          await this.busAssignment.assertCanAssign(tx, targetBusId, {
+            id,
+            scheduledDeparture: departure,
+            scheduledArrival: arrival,
+            route: trip.route,
+          });
+        }
 
         // TODO: cuando existan tickets, cambiar de bus exigirá remapear asientos por número
-        await tx.trip.update({ where: { id }, data: { busId } });
+        await tx.trip.update({
+          where: { id },
+          data: {
+            ...(busId !== undefined && { busId }),
+            ...(price !== undefined && { price }),
+            ...(rescheduled && {
+              scheduledDeparture: departure,
+              scheduledArrival: arrival,
+              estimatedArrival: arrival,
+            }),
+          },
+        });
       }, TX_OPTIONS)
       .catch(rethrowBusOverlap)
       .then(() => this.prisma.trip.findUniqueOrThrow({ where: { id }, include: tripInclude }));

@@ -118,7 +118,7 @@
   - [x] Get trips (paginated, filter by route, bus plate, status, date range) — `ADMIN` `OPERATOR` `SELLER` (actual: ADMIN, OPERATOR)
   - [x] Search available trips (origin, destination, date, seats left) — `Public`
   - [x] Get trip by id (includes route, bus, crew, seats left) — `ADMIN` `OPERATOR` `SELLER` (actual: ADMIN, OPERATOR)
-  - [ ] Update trip (reschedule, change bus or price) only if `SCHEDULED` — `ADMIN` `OPERATOR`
+  - [x] Update trip (reschedule, change bus or price) only if `SCHEDULED` — `ADMIN` `OPERATOR`
   - [x] Validate bus availability (status `AVAILABLE` and no overlapping trips, considering route duration) — `System`
   - [x] Rotations: weekly bus cycle over frequencies, auto-assign bus on generate, change rotation bus (`applyFrom`) — `ADMIN` `OPERATOR`
   - [ ] Start trip (`IN_PROGRESS`, set `actualDeparture`, bus → `ON_ROUTE`, save history) — `ADMIN` `OPERATOR` `DRIVER (own)`
