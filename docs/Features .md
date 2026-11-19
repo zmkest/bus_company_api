@@ -121,7 +121,7 @@
   - [x] Update trip (reschedule, change bus or price) only if `SCHEDULED` — `ADMIN` `OPERATOR`
   - [x] Validate bus availability (status `AVAILABLE` and no overlapping trips, considering route duration) — `System`
   - [x] Rotations: weekly bus cycle over frequencies, auto-assign bus on generate, change rotation bus (`applyFrom`) — `ADMIN` `OPERATOR`
-  - [ ] Start trip (`IN_PROGRESS`, set `actualDeparture`, bus → `ON_ROUTE`, save history) — `ADMIN` `OPERATOR` `DRIVER (own)`
+  - [x] Start trip (`IN_PROGRESS`, set `actualDeparture`, bus → `ON_ROUTE`, save history) — `ADMIN` `OPERATOR` `DRIVER (own)`
   - [ ] Complete trip (`COMPLETED`, set `actualArrival`, bus → `AVAILABLE`, update `odometerKm` with route distance) — `ADMIN` `OPERATOR` `DRIVER (own)`
   - [ ] Cancel trip (`CANCELLED`, cancel tickets, refund payments, free bus) — `ADMIN` `OPERATOR`
   - [ ] Get seat map of a trip (seat number + status: free / reserved / sold, no passenger data) — `Public`

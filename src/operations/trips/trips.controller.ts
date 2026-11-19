@@ -20,6 +20,8 @@ import { AuthGuard } from '../../identity/auth/common/guards/auth.guard.js';
 import { RoleGuard } from '../../common/guards/role.guard.js';
 import { Roles } from '../../common/decorators/roles-user.decorator.js';
 import { UserRole } from '../../generated/prisma/enums.js';
+import { CurrentUserId } from '../../common/decorators/current-user.decorator.js';
+import { CurrentUserRole } from '../../common/decorators/current-user-role.decorator.js';
 
 @Controller('trips')
 export class TripsController {
@@ -70,5 +72,16 @@ export class TripsController {
   @Patch(':id/bus')
   assignBus(@Param('id', ParseIntPipe) id: number, @Body() dto: AssignBusDto) {
     return this.tripsService.assignBus(id, dto.busId);
+  }
+
+  @UseGuards(AuthGuard, RoleGuard)
+  @Roles(UserRole.ADMIN, UserRole.OPERATOR, UserRole.DRIVER)
+  @Patch(':id/start')
+  start(
+    @Param('id', ParseIntPipe) id: number,
+    @CurrentUserId() userId: number,
+    @CurrentUserRole() role: UserRole,
+  ) {
+    return this.tripsService.start(id, userId, role);
   }
 }
