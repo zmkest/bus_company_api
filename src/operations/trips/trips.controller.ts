@@ -84,4 +84,15 @@ export class TripsController {
   ) {
     return this.tripsService.start(id, userId, role);
   }
+
+  @UseGuards(AuthGuard, RoleGuard)
+  @Roles(UserRole.ADMIN, UserRole.OPERATOR, UserRole.DRIVER)
+  @Patch(':id/complete')
+  complete(
+    @Param('id', ParseIntPipe) id: number,
+    @CurrentUserId() userId: number,
+    @CurrentUserRole() role: UserRole,
+  ) {
+    return this.tripsService.complete(id, userId, role);
+  }
 }

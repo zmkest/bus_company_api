@@ -714,4 +714,69 @@ export class TripsService {
       }, TX_OPTIONS)
       .then(() => this.findOne(id));
   }
+
+  /** Completa un viaje IN_PROGRESS: llegada real ahora, bus AVAILABLE con historial y suma la distancia al odómetro */
+  async complete(id: number, userId: number, role: UserRole) {
+    return this.prisma
+      .$transaction(async (tx) => {
+        const trip = await tx.trip.findUnique({
+          where: { id },
+          select: {
+            id: true,
+            status: true,
+            busId: true,
+            route: { select: { distanceKm: true } },
+            crew: { select: { crewMember: { select: { userId: true } } } },
+          },
+        });
+
+        if (!trip) throw new NotFoundException(`Viaje con id #${id} no existe`);
+        if (role === UserRole.DRIVER && !trip.crew.some((c) => c.crewMember.userId === userId)) {
+          throw new ForbiddenException('No estás asignado a este viaje');
+        }
+        if (trip.status !== TripStatus.IN_PROGRESS) {
+          throw new ConflictException(
+            `Solo se puede completar un viaje IN_PROGRESS (estado actual: ${trip.status})`,
+          );
+        }
+        if (trip.busId === null) {
+          throw new ConflictException('El viaje no tiene bus asignado');
+        }
+
+        const [bus] = await tx.$queryRaw<{ plate: string; status: BusStatus }[]>`
+          SELECT plate, status FROM "Bus" WHERE id = ${trip.busId} FOR UPDATE`;
+        if (bus.status !== BusStatus.ON_ROUTE) {
+          throw new ConflictException(
+            `El bus ${bus.plate} no está en ruta (estado actual: ${bus.status})`,
+          );
+        }
+
+        const now = new Date();
+        const { count } = await tx.trip.updateMany({
+          where: { id, status: TripStatus.IN_PROGRESS },
+          data: { status: TripStatus.COMPLETED, actualArrival: now },
+        });
+        if (count === 0) {
+          throw new ConflictException('El estado del viaje cambió, intenta de nuevo');
+        }
+
+        await tx.bus.update({
+          where: { id: trip.busId },
+          data: {
+            status: BusStatus.AVAILABLE,
+            odometerKm: { increment: Math.round(trip.route.distanceKm) },
+          },
+        });
+        await tx.busStatusHistory.create({
+          data: {
+            busId: trip.busId,
+            fromStatus: BusStatus.ON_ROUTE,
+            toStatus: BusStatus.AVAILABLE,
+            changedById: userId,
+            reason: `Fin del viaje #${id}`,
+          },
+        });
+      }, TX_OPTIONS)
+      .then(() => this.findOne(id));
+  }
 }
