@@ -52,6 +52,17 @@ export class TripsController {
   }
 
   @UseGuards(AuthGuard, RoleGuard)
+  @Roles(UserRole.ADMIN, UserRole.OPERATOR, UserRole.DRIVER)
+  @Get(':id/manifest')
+  manifest(
+    @Param('id', ParseIntPipe) id: number,
+    @CurrentUserId() userId: number,
+    @CurrentUserRole() role: UserRole,
+  ) {
+    return this.tripsService.manifest(id, userId, role);
+  }
+
+  @UseGuards(AuthGuard, RoleGuard)
   @Roles(UserRole.ADMIN, UserRole.OPERATOR)
   @Get(':id')
   findOne(@Param('id', ParseIntPipe) id: number) {
