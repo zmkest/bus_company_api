@@ -8,7 +8,7 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service.js';
 import { Prisma } from '../../generated/prisma/client.js';
-import { BusStatus, TripStatus, UserRole } from '../../generated/prisma/enums.js';
+import { BusStatus, TicketStatus, TripStatus, UserRole } from '../../generated/prisma/enums.js';
 import { DateTime } from 'luxon';
 import { UnassignedCode, UnassignedReason } from './bus-assignment/assignment-conflict.js';
 import { label, TerminalLabel, terminalLabelSelect } from './bus-assignment/assignment-messages.js';
@@ -54,6 +54,17 @@ const publicTerminalSelect = {
     city: { select: { id: true, name: true } },
   },
 } as const;
+
+/** Un DRIVER solo puede operar sobre los viajes a los que está asignado */
+const assertCrewAccess = (
+  crew: { crewMember: { userId: number | null } }[],
+  userId: number,
+  role: UserRole,
+) => {
+  if (role === UserRole.DRIVER && !crew.some((c) => c.crewMember.userId === userId)) {
+    throw new ForbiddenException('No estás asignado a este viaje');
+  }
+};
 
 // La base es remota: margen para transacciones con varias consultas
 const TX_OPTIONS = { timeout: 15_000 } as const;
@@ -337,6 +348,50 @@ export class TripsService {
       tripId: trip.id,
       seatsLeft: seats.filter((seat) => seat.status === SeatMapStatus.FREE).length,
       seats,
+    };
+  }
+
+  /** Lista de embarque: pasajeros con ticket pagado o abordado, ordenados por asiento */
+  async manifest(id: number, userId: number, role: UserRole) {
+    const trip = await this.prisma.trip.findUnique({
+      where: { id },
+      select: {
+        id: true,
+        status: true,
+        scheduledDeparture: true,
+        actualDeparture: true,
+        route: { select: { origin: terminalSelect, destination: terminalSelect } },
+        bus: { select: { id: true, plate: true } },
+        crew: { select: { crewMember: { select: { userId: true } } } },
+        tickets: {
+          where: { status: { in: [TicketStatus.PAID, TicketStatus.BOARDED] } },
+          select: {
+            id: true,
+            status: true,
+            seat: { select: { number: true } },
+            passenger: { select: { id: true, document: true, name: true, phone: true } },
+          },
+          orderBy: { seat: { number: 'asc' } },
+        },
+      },
+    });
+
+    if (!trip) throw new NotFoundException(`Viaje con id #${id} no existe`);
+    assertCrewAccess(trip.crew, userId, role);
+
+    const { crew: _crew, tickets, ...rest } = trip;
+    const boarded = tickets.filter((t) => t.status === TicketStatus.BOARDED).length;
+    return {
+      ...rest,
+      totalPassengers: tickets.length,
+      boarded,
+      pending: tickets.length - boarded,
+      passengers: tickets.map((t) => ({
+        ticketId: t.id,
+        seatNumber: t.seat.number,
+        status: t.status,
+        passenger: t.passenger,
+      })),
     };
   }
 
@@ -707,9 +762,7 @@ export class TripsService {
         });
 
         if (!trip) throw new NotFoundException(`Viaje con id #${id} no existe`);
-        if (role === UserRole.DRIVER && !trip.crew.some((c) => c.crewMember.userId === userId)) {
-          throw new ForbiddenException('No estás asignado a este viaje');
-        }
+        assertCrewAccess(trip.crew, userId, role);
         if (trip.status !== TripStatus.SCHEDULED) {
           throw new ConflictException(
             `Solo se puede iniciar un viaje SCHEDULED (estado actual: ${trip.status})`,
@@ -776,9 +829,7 @@ export class TripsService {
         });
 
         if (!trip) throw new NotFoundException(`Viaje con id #${id} no existe`);
-        if (role === UserRole.DRIVER && !trip.crew.some((c) => c.crewMember.userId === userId)) {
-          throw new ForbiddenException('No estás asignado a este viaje');
-        }
+        assertCrewAccess(trip.crew, userId, role);
         if (trip.status !== TripStatus.IN_PROGRESS) {
           throw new ConflictException(
             `Solo se puede completar un viaje IN_PROGRESS (estado actual: ${trip.status})`,
