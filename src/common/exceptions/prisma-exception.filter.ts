@@ -40,6 +40,11 @@ export class PrismaExceptionFilter implements ExceptionFilter {
           status: HttpStatus.CONFLICT,
           message: 'Referencia a un registro inválido o en uso',
         };
+      case 'P2028':
+        return {
+          status: HttpStatus.SERVICE_UNAVAILABLE,
+          message: 'La operación tardó demasiado y fue cancelada, intente nuevamente',
+        };
       default:
         return { status: HttpStatus.INTERNAL_SERVER_ERROR, message: 'Error interno del servidor' };
     }

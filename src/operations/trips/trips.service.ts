@@ -11,12 +11,10 @@ import { Prisma } from '../../generated/prisma/client.js';
 import { BusStatus, TicketStatus, TripStatus, UserRole } from '../../generated/prisma/enums.js';
 import { DateTime } from 'luxon';
 import { UnassignedCode, UnassignedReason } from './bus-assignment/assignment-conflict.js';
-import { label, TerminalLabel, terminalLabelSelect } from './bus-assignment/assignment-messages.js';
 import {
   BusCandidate,
   LabeledRoute,
   planBusAssignments,
-  TimelineTrip,
 } from './bus-assignment/bus-schedule.planner.js';
 import { envs } from '../../config/envs.js';
 import { CreateTripDto } from './dto/create-trip.dto.js';
@@ -29,7 +27,11 @@ import {
   parseLocalDate,
   todayIn,
 } from './common/trip-schedule.util.js';
-import { BusAssignmentService } from './bus-assignment/bus-assignment.service.js';
+import {
+  BusAssignmentService,
+  labeledRouteSelect,
+  toLabeledRoute,
+} from './bus-assignment/bus-assignment.service.js';
 import { rethrowBusOverlap } from './common/prisma-errors.util.js';
 import { FindTripsQueryDto } from './dto/find-trips-query.dto.js';
 import { paginate } from '../../common/interfaces/paginated.js';
@@ -72,26 +74,6 @@ const GENERATE_TX_OPTIONS = { timeout: 30_000 } as const;
 
 // Antelación máxima con la que se puede iniciar un viaje respecto a su salida programada
 const START_WINDOW_MINUTES = 60;
-
-const labeledRouteSelect = {
-  originId: true,
-  destinationId: true,
-  durationMinutes: true,
-  origin: terminalLabelSelect,
-  destination: terminalLabelSelect,
-} as const;
-
-const toLabeledRoute = (route: {
-  originId: number;
-  destinationId: number;
-  origin: TerminalLabel;
-  destination: TerminalLabel;
-}): LabeledRoute => ({
-  originId: route.originId,
-  destinationId: route.destinationId,
-  originLabel: label(route.origin),
-  destinationLabel: label(route.destination),
-});
 
 const tripKey = (frequencyId: number, departure: Date) => `${frequencyId}:${departure.getTime()}`;
 
@@ -536,7 +518,7 @@ export class TripsService {
 
     const plan = planBusAssignments(
       withBus,
-      await this.loadBusTimelines(tx, busIds, from, to),
+      await this.busAssignment.loadBusTimelines(tx, busIds, from, to),
       envs.turnaround_minutes,
     );
     plan.accepted.forEach((c) => (c.data.busId = c.bus.id));
@@ -611,63 +593,6 @@ export class TripsService {
     });
 
     return new Set(existing.map((t) => tripKey(t.frequencyId!, t.scheduledDeparture)));
-  }
-
-  /** Viajes no cancelados de cada bus alrededor del rango, más el vecino inmediato en cada borde */
-  private async loadBusTimelines(
-    tx: Prisma.TransactionClient,
-    busIds: number[],
-    from: DateTime,
-    to: DateTime,
-  ) {
-    const timelines = new Map<number, TimelineTrip[]>();
-    if (busIds.length === 0) return timelines;
-
-    const start = from.minus({ days: 1 }).toJSDate();
-    const end = to.plus({ days: 2 }).toJSDate();
-    const select = {
-      id: true,
-      busId: true,
-      status: true,
-      scheduledDeparture: true,
-      scheduledArrival: true,
-      route: { select: labeledRouteSelect },
-    } as const;
-    const active = { not: TripStatus.CANCELLED };
-
-    const trips = await tx.trip.findMany({
-      where: {
-        busId: { in: busIds },
-        status: active,
-        scheduledDeparture: { gte: start, lt: end },
-      },
-      select,
-    });
-
-    // Secuencial: dentro de una transacción las consultas comparten la misma conexión
-    for (const busId of busIds) {
-      const previous = await tx.trip.findFirst({
-        where: { busId, status: active, scheduledDeparture: { lt: start } },
-        orderBy: { scheduledDeparture: 'desc' },
-        select,
-      });
-      const next = await tx.trip.findFirst({
-        where: { busId, status: active, scheduledDeparture: { gte: end } },
-        orderBy: { scheduledDeparture: 'asc' },
-        select,
-      });
-      if (previous) trips.push(previous);
-      if (next) trips.push(next);
-    }
-
-    for (const trip of trips) {
-      if (!trip.busId) continue;
-      const list = timelines.get(trip.busId) ?? [];
-      list.push({ ...trip, route: toLabeledRoute(trip.route) });
-      timelines.set(trip.busId, list);
-    }
-
-    return timelines;
   }
 
   assignBus(id: number, busId: number | null) {

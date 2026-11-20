@@ -9,12 +9,14 @@ import { Prisma } from '../../generated/prisma/client.js';
 import { BusStatus, TripStatus, Weekday } from '../../generated/prisma/enums.js';
 import { envs } from '../../config/envs.js';
 import { paginate } from '../../common/interfaces/paginated.js';
-import { BusAssignmentService } from '../trips/bus-assignment/bus-assignment.service.js';
+import { DateTime } from 'luxon';
 import {
-  BusAssignmentConflict,
-  UnassignedCode,
-  UnassignedReason,
-} from '../trips/bus-assignment/assignment-conflict.js';
+  BusAssignmentService,
+  labeledRouteSelect,
+  toLabeledRoute,
+} from '../trips/bus-assignment/bus-assignment.service.js';
+import { planBusAssignments } from '../trips/bus-assignment/bus-schedule.planner.js';
+import { UnassignedCode, UnassignedReason } from '../trips/bus-assignment/assignment-conflict.js';
 import { label, terminalLabelSelect } from '../trips/bus-assignment/assignment-messages.js';
 import {
   minutesOfDay,
@@ -22,7 +24,11 @@ import {
   todayIn,
   weekdayOf,
 } from '../trips/common/trip-schedule.util.js';
-import { rethrowRotationConflict } from '../trips/common/prisma-errors.util.js';
+import {
+  isBusOverlapViolation,
+  rethrowBusOverlap,
+  rethrowRotationConflict,
+} from '../trips/common/prisma-errors.util.js';
 import { assertValidCycle, CycleLeg, legKey, WEEKDAY_LABEL } from './rules/rotation-cycle.rules.js';
 import { CreateRotationDto, RotationLegDto } from './dto/create-rotation.dto.js';
 import { UpdateRotationDto } from './dto/update-rotation.dto.js';
@@ -32,8 +38,6 @@ import { ChangeRotationBusDto } from './dto/change-rotation-bus.dto.js';
 type Tx = Prisma.TransactionClient;
 
 const TX_OPTIONS = { timeout: 30_000 } as const;
-// Reasigna los viajes uno por uno con BusAssignmentService contra una base remota
-const CHANGE_BUS_TX_OPTIONS = { timeout: 60_000 } as const;
 
 const terminalSelect = {
   select: { id: true, name: true, city: { select: { id: true, name: true } } },
@@ -217,13 +221,17 @@ export class RotationsService {
         });
         if (!rotation) throw new NotFoundException(`Rotación con id #${id} no existe`);
 
-        if (busId !== null) await this.assertBusUsable(tx, busId, id, rotation.isActive);
+        const bus =
+          busId === null ? null : await this.assertBusUsable(tx, busId, id, rotation.isActive);
         await tx.rotation.update({ where: { id }, data: { busId } });
 
         if (!from) return { reassigned: 0, unassigned: [] };
-        return this.reassignTrips(tx, id, busId, rotation.legs, from.toJSDate());
-      }, CHANGE_BUS_TX_OPTIONS)
-      .catch(rethrowRotationConflict);
+        return this.reassignTrips(tx, id, bus, rotation.legs, from.toJSDate());
+      }, TX_OPTIONS)
+      .catch((error) => {
+        if (isBusOverlapViolation(error)) rethrowBusOverlap(error);
+        rethrowRotationConflict(error);
+      });
 
     return { rotation: await this.findOne(id), ...result };
   }
@@ -231,7 +239,7 @@ export class RotationsService {
   private async reassignTrips(
     tx: Tx,
     rotationId: number,
-    busId: number | null,
+    bus: { id: number; plate: string } | null,
     legs: { frequencyId: number; weekday: Weekday }[],
     from: Date,
   ) {
@@ -248,11 +256,9 @@ export class RotationsService {
       select: {
         id: true,
         frequencyId: true,
-        busId: true,
-        rotationId: true,
         scheduledDeparture: true,
         scheduledArrival: true,
-        route: { select: { originId: true, destinationId: true } },
+        route: { select: labeledRouteSelect },
       },
       orderBy: { scheduledDeparture: 'asc' },
     });
@@ -264,45 +270,55 @@ export class RotationsService {
           legKey({ frequencyId: t.frequencyId, weekday: weekdayOf(t.scheduledDeparture, zone) }),
         ),
     );
+    if (trips.length === 0) return { reassigned: 0, unassigned: [] };
 
     await tx.trip.updateMany({
       where: { id: { in: trips.map((t) => t.id) } },
       data: { busId: null, rotationId },
     });
 
-    let reassigned = 0;
-    const unassigned: RotationTripUnassigned[] = [];
-    const report = (trip: (typeof trips)[number], reason: UnassignedReason) =>
-      unassigned.push({
-        tripId: trip.id,
-        frequencyId: trip.frequencyId,
-        scheduledDeparture: trip.scheduledDeparture,
-        ...reason,
-      });
+    const toUnassigned = (
+      trip: { id: number; frequencyId: number | null; scheduledDeparture: Date },
+      reason: UnassignedReason,
+    ): RotationTripUnassigned => ({
+      tripId: trip.id,
+      frequencyId: trip.frequencyId,
+      scheduledDeparture: trip.scheduledDeparture,
+      ...reason,
+    });
 
-    for (const trip of trips) {
-      if (busId === null) {
-        report(trip, {
-          code: UnassignedCode.ROTATION_NO_BUS,
-          message: 'La rotación no tiene bus asignado',
-        });
-        continue;
-      }
-
-      try {
-        await this.busAssignment.assertCanAssign(tx, busId, trip);
-      } catch (error) {
-        if (!(error instanceof BusAssignmentConflict)) throw error;
-        report(trip, error.toReason());
-        continue;
-      }
-
-      // TODO: cuando existan tickets, cambiar de bus exigirá remapear asientos por número
-      await tx.trip.update({ where: { id: trip.id }, data: { busId } });
-      reassigned++;
+    if (bus === null) {
+      const reason = {
+        code: UnassignedCode.ROTATION_NO_BUS,
+        message: 'La rotación no tiene bus asignado',
+      };
+      return { reassigned: 0, unassigned: trips.map((t) => toUnassigned(t, reason)) };
     }
 
-    return { reassigned, unassigned };
+    const timelines = await this.busAssignment.loadBusTimelines(
+      tx,
+      [bus.id],
+      DateTime.fromJSDate(trips[0].scheduledDeparture),
+      DateTime.fromJSDate(trips[trips.length - 1].scheduledDeparture),
+    );
+
+    const plan = planBusAssignments(
+      trips.map((t) => ({ ...t, bus, route: toLabeledRoute(t.route) })),
+      timelines,
+      envs.turnaround_minutes,
+    );
+
+    // TODO: cuando existan tickets, cambiar de bus exigirá remapear asientos por número
+    const { count } = await tx.trip.updateMany({
+      where: { id: { in: plan.accepted.map((t) => t.id) } },
+      data: { busId: bus.id },
+    });
+
+    const unassigned = plan.rejected
+      .map(({ candidate, reason }) => toUnassigned(candidate, reason))
+      .sort((a, b) => a.scheduledDeparture.getTime() - b.scheduledDeparture.getTime());
+
+    return { reassigned: count, unassigned };
   }
 
   /** Los viajes futuros de la rotación que ya no coinciden con sus legs dejan de pertenecer a ella */
