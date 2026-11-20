@@ -41,6 +41,13 @@ export class TripsController {
     return this.tripsService.findAll(query);
   }
 
+  @UseGuards(AuthGuard, RoleGuard)
+  @Roles(UserRole.ADMIN, UserRole.OPERATOR)
+  @Get('count/status')
+  countByStatus() {
+    return this.tripsService.countByStatus();
+  }
+
   @Get('search')
   search(@Query() query: SearchTripsQueryDto) {
     return this.tripsService.search(query);

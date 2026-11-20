@@ -261,6 +261,17 @@ export class TripsService {
     };
   }
 
+  async countByStatus() {
+    const groups = await this.prisma.trip.groupBy({ by: ['status'], _count: { _all: true } });
+    const counts = Object.fromEntries(
+      Object.values(TripStatus).map((status) => [status, 0]),
+    ) as Record<TripStatus, number>;
+    for (const g of groups) counts[g.status] = g._count._all;
+
+    const total = Object.values(counts).reduce((sum, n) => sum + n, 0);
+    return { total, ...counts };
+  }
+
   /** Búsqueda pública: viajes programados con bus y asientos libres en una fecha local */
   async search({ originCityId, destinationCityId, date }: SearchTripsQueryDto) {
     if (originCityId === destinationCityId) {
