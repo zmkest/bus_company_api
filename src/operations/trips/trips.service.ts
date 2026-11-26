@@ -8,7 +8,14 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service.js';
 import { Prisma } from '../../generated/prisma/client.js';
-import { BusStatus, TicketStatus, TripStatus, UserRole } from '../../generated/prisma/enums.js';
+import {
+  BusStatus,
+  CrewPosition,
+  CrewStatus,
+  TicketStatus,
+  TripStatus,
+  UserRole,
+} from '../../generated/prisma/enums.js';
 import { DateTime } from 'luxon';
 import { UnassignedCode, UnassignedReason } from './bus-assignment/assignment-conflict.js';
 import {
@@ -43,6 +50,7 @@ import {
   seatMapStatus,
   seatsLeft,
 } from './common/seats.util.js';
+import { FindAssignedTripsQueryDto } from './dto/find-assigned-trips-query.dto.js';
 
 const terminalSelect = {
   select: { id: true, name: true, city: { select: { id: true, name: true } } },
@@ -810,5 +818,39 @@ export class TripsService {
         });
       }, TX_OPTIONS)
       .then(() => this.findOne(id));
+  }
+
+  async findAssignedTripsByDriver(userId: number, query: FindAssignedTripsQueryDto) {
+    const { limit, page, status, order, sortBy } = query;
+    const driver = await this.prisma.crewMember.findUnique({
+      where: { userId: userId, status: CrewStatus.ACTIVE, position: CrewPosition.DRIVER },
+      select: { id: true },
+    });
+
+    if (!driver) {
+      throw new ForbiddenException('No estás habilitado para realizar un viaje');
+    }
+
+    const where: Prisma.TripWhereInput = {
+      crew: { some: { crewMemberId: driver.id } },
+      status: status ?? { in: [TripStatus.SCHEDULED, TripStatus.IN_PROGRESS] },
+    };
+
+    const orderBy: Prisma.TripOrderByWithRelationInput[] = [{ [sortBy]: order }, { id: order }];
+
+    const [total, trips] = await this.prisma.$transaction([
+      this.prisma.trip.count({
+        where,
+      }),
+      this.prisma.trip.findMany({
+        where,
+        orderBy,
+        take: limit,
+        skip: (page - 1) * limit,
+        include: tripInclude,
+      }),
+    ]);
+
+    return paginate(trips, total, page, limit);
   }
 }

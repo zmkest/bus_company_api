@@ -126,7 +126,7 @@
   - [x] Get seat map of a trip (seat number + status: free / reserved / sold, no passenger data) — `Public`
   - [x] Get passenger manifest of a trip (boarding list) — `ADMIN` `OPERATOR` `DRIVER (own)`
   - [x] Count trips by status — `ADMIN` `OPERATOR`
-  - [ ] Get my assigned trips — `DRIVER`
+  - [x] Get my assigned trips — `DRIVER`
   - [ ] Cancel trip (`CANCELLED`, cancel tickets, refund payments, free bus) — `ADMIN` `OPERATOR`
 
 - [ ] **Crew**

@@ -22,6 +22,7 @@ import { Roles } from '../../common/decorators/roles-user.decorator.js';
 import { UserRole } from '../../generated/prisma/enums.js';
 import { CurrentUserId } from '../../common/decorators/current-user.decorator.js';
 import { CurrentUserRole } from '../../common/decorators/current-user-role.decorator.js';
+import { FindAssignedTripsQueryDto } from './dto/find-assigned-trips-query.dto.js';
 
 @Controller('trips')
 export class TripsController {
@@ -51,6 +52,16 @@ export class TripsController {
   @Get('search')
   search(@Query() query: SearchTripsQueryDto) {
     return this.tripsService.search(query);
+  }
+
+  @UseGuards(AuthGuard, RoleGuard)
+  @Roles(UserRole.DRIVER)
+  @Get('assigned')
+  findAssignedTripsByDriver(
+    @CurrentUserId() userId: number,
+    @Query() query: FindAssignedTripsQueryDto,
+  ) {
+    return this.tripsService.findAssignedTripsByDriver(userId, query);
   }
 
   @Get(':id/seats')
