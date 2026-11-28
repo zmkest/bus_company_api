@@ -853,4 +853,68 @@ export class TripsService {
 
     return paginate(trips, total, page, limit);
   }
+
+  /** Cancela un viaje SCHEDULED o IN_PROGRESS: CANCELLED, tickets cancelados y bus AVAILABLE si estaba en ruta */
+  async cancel(id: number, userId: number) {
+    return this.prisma
+      .$transaction(async (tx) => {
+        const trip = await tx.trip.findUnique({
+          where: { id },
+          select: { id: true, status: true, busId: true },
+        });
+
+        if (!trip) throw new NotFoundException(`Viaje con id #${id} no existe`);
+        if (trip.status !== TripStatus.SCHEDULED && trip.status !== TripStatus.IN_PROGRESS) {
+          throw new ConflictException(
+            `Solo se puede cancelar un viaje SCHEDULED o IN_PROGRESS (estado actual: ${trip.status})`,
+          );
+        }
+
+        const { count } = await tx.trip.updateMany({
+          where: { id, status: trip.status },
+          data: { status: TripStatus.CANCELLED },
+        });
+        if (count === 0) {
+          throw new ConflictException('El estado del viaje cambió, intenta de nuevo');
+        }
+
+        if (trip.status === TripStatus.IN_PROGRESS && trip.busId !== null) {
+          await this.releaseBus(tx, trip.busId, id, userId);
+        }
+
+        await tx.ticket.updateMany({
+          where: {
+            tripId: id,
+            status: { in: [TicketStatus.RESERVED, TicketStatus.PAID, TicketStatus.BOARDED] },
+          },
+          data: { status: TicketStatus.CANCELLED },
+        });
+        // TODO: reembolsar pagos de los tickets PAID/BOARDED cuando exista el módulo de pagos
+      }, TX_OPTIONS)
+      .then(() => this.findOne(id));
+  }
+
+  /** Devuelve a AVAILABLE el bus de un viaje cancelado en curso, solo si sigue ON_ROUTE */
+  private async releaseBus(
+    tx: Prisma.TransactionClient,
+    busId: number,
+    tripId: number,
+    userId: number,
+  ) {
+    const { count } = await tx.bus.updateMany({
+      where: { id: busId, status: BusStatus.ON_ROUTE },
+      data: { status: BusStatus.AVAILABLE },
+    });
+    if (count === 0) return;
+
+    await tx.busStatusHistory.create({
+      data: {
+        busId,
+        fromStatus: BusStatus.ON_ROUTE,
+        toStatus: BusStatus.AVAILABLE,
+        changedById: userId,
+        reason: `Cancelación del viaje #${tripId}`,
+      },
+    });
+  }
 }
