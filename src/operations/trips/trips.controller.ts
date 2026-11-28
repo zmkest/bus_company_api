@@ -129,4 +129,11 @@ export class TripsController {
   ) {
     return this.tripsService.complete(id, userId, role);
   }
+
+  @UseGuards(AuthGuard, RoleGuard)
+  @Roles(UserRole.ADMIN, UserRole.OPERATOR)
+  @Patch(':id/cancel')
+  cancel(@Param('id', ParseIntPipe) id: number, @CurrentUserId() userId: number) {
+    return this.tripsService.cancel(id, userId);
+  }
 }

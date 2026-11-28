@@ -112,7 +112,7 @@
   - [x] Delete frequency by id (trips keep history, `frequencyId` → null) — `ADMIN`
   - [x] Validate no duplicated frequency (same route, time and weekdays) — `System`
 
-- [ ] **Trips**
+- [x] **Trips**
   - [x] Create trip manually (route, bus, departure, price) — `ADMIN` `OPERATOR`
   - [x] Generate trips from frequencies (date range, skips existing: `frequencyId + scheduledDeparture`) — `ADMIN` `OPERATOR`
   - [x] Get trips (paginated, filter by route, bus plate, status, date range) — `ADMIN` `OPERATOR` `SELLER` (actual: ADMIN, OPERATOR)
@@ -127,7 +127,7 @@
   - [x] Get passenger manifest of a trip (boarding list) — `ADMIN` `OPERATOR` `DRIVER (own)`
   - [x] Count trips by status — `ADMIN` `OPERATOR`
   - [x] Get my assigned trips — `DRIVER`
-  - [ ] Cancel trip (`CANCELLED`, cancel tickets, refund payments, free bus) — `ADMIN` `OPERATOR`
+  - [x] Cancel trip (`CANCELLED`, cancel tickets, free bus; refund pendiente: payments) — `ADMIN` `OPERATOR`
 
 - [ ] **Crew**
   - [ ] Create crew member (document, name, position, license; optional link to user) — `ADMIN`
